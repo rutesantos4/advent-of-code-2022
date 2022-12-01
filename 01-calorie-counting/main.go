@@ -6,6 +6,7 @@ import (
 	"io/ioutil"
 	"log"
 	"os"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -16,6 +17,8 @@ func main() {
 	flag.Parse()
 
 	log.Printf("inputFilePath %v\n", *inputFilePath)
+
+	log.Printf("> (1st Puzzle) Find the Elf carrying the most Calories. How many total Calories is that Elf carrying?")
 
 	start := time.Now()
 
@@ -47,6 +50,23 @@ func main() {
 	log.Printf("The most calories is %v", part1)
 	elapsed = time.Since(start)
 	log.Printf("End Second Solution - %s", elapsed)
+
+	log.Printf("> (2nd Puzzle) Find the top three Elves carrying the most Calories. How many Calories are those Elves carrying in total?")
+
+	elvesThatCarryMostCaloriesCount := 3
+
+	elves := elfs.FindElvesThatCarryMostCalories(elvesThatCarryMostCaloriesCount)
+
+	elvesCarriedCaloriesTotal := 0
+
+	for _, v := range elves {
+		totalCalores := v.GetTotalCalories()
+		elvesCarriedCaloriesTotal += totalCalores
+
+		log.Printf("Elf (%d): %d", v.Id, totalCalores)
+	}
+
+	log.Printf("Total calories carried by elves: %d", elvesCarriedCaloriesTotal)
 }
 
 func parseFile(filePath string) (map[int]Elf, error) {
@@ -136,6 +156,26 @@ func (this Elfs) FindElfMostCalories() Elf {
 
 	}
 	return most
+}
+
+func (this Elfs) FindElvesThatCarryMostCalories(elvesCount int) []Elf {
+	elves := make([]Elf, len(this.List))
+
+	for i, elf := range this.List {
+		elves[i] = elf
+	}
+
+	sort.Slice(elves, func(i, j int) bool {
+		return elves[i].GetTotalCalories() >= elves[j].GetTotalCalories()
+	})
+
+	topElves := make([]Elf, elvesCount)
+
+	for i := 0; i < elvesCount; i++ {
+		topElves[i] = elves[i]
+	}
+
+	return topElves
 }
 
 type Elf struct {
