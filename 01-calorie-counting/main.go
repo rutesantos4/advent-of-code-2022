@@ -169,11 +169,7 @@ func (this Elfs) FindElvesThatCarryMostCalories(elvesCount int) []Elf {
 		return elves[i].GetTotalCalories() >= elves[j].GetTotalCalories()
 	})
 
-	topElves := make([]Elf, elvesCount)
-
-	for i := 0; i < elvesCount; i++ {
-		topElves[i] = elves[i]
-	}
+	topElves := elves[0:elvesCount]
 
 	return topElves
 }
