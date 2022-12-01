@@ -13,7 +13,7 @@ import (
 )
 
 func main() {
-	var inputFilePath = flag.String("inputFilePath", "./input.txt", "Input File")
+	var inputFilePath = flag.String("inputFilePath", "./inputf.txt", "Input File")
 	flag.Parse()
 
 	log.Printf("inputFilePath %v\n", *inputFilePath)
