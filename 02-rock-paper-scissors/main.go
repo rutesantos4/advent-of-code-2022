@@ -3,6 +3,7 @@ package main
 
 import (
 	"flag"
+	"fmt"
 	"io/ioutil"
 	"log"
 	"os"
@@ -27,6 +28,20 @@ func main() {
 	finalPlayerScore := games.ComputePlayerScore()
 
 	log.Printf("Final Player Score is: %d", finalPlayerScore)
+
+	log.Printf("> (2nd Puzzle) Following the Elf's instructions for the second column, what would your total score be if everything goes exactly according to your strategy guide?")
+
+	games, err = parseFile2(*inputFilePath)
+
+	if err != nil {
+		log.Fatalf("Error Parsing file %v: %v", *inputFilePath, err)
+		return
+	}
+
+	finalPlayerScore = games.ComputePlayerScore()
+
+	log.Printf("Final Player Score is: %d", finalPlayerScore)
+
 }
 
 const (
@@ -72,20 +87,15 @@ func computeScore(pm int8, om int8) []int {
 	switch movesDiff {
 	case 2:
 		score[1] += WinPoints
-		break
 	case 1:
 		score[0] += WinPoints
-		break
 	case 0:
 		score[0] += DrawPoints
 		score[1] += DrawPoints
-		break
 	case -1:
 		score[1] += WinPoints
-		break
 	case -2:
 		score[0] += WinPoints
-		break
 	}
 
 	return score
@@ -115,6 +125,54 @@ func parseFile(filePath string) (Games, error) {
 	}
 
 	return result, nil
+}
+
+func parseFile2(filePath string) (Games, error) {
+	lines, err := getFileLines(filePath)
+
+	if err != nil {
+		return nil, err
+	}
+
+	lines = convertLinesInABC(lines)
+
+	lines = convertLinesToXYZ(lines)
+
+	result := make([]Game, len(lines))
+
+	for i, line := range lines {
+		result[i] = lineToGame(line)
+	}
+
+	return result, nil
+}
+
+func convertLinesInABC(lines []string) []string {
+	mapping := make(map[string]string)
+	mapping["A X"] = "C"
+	mapping["A Y"] = "A"
+	mapping["A Z"] = "B"
+	mapping["B X"] = "A"
+	mapping["B Y"] = "B"
+	mapping["B Z"] = "C"
+	mapping["C X"] = "B"
+	mapping["C Y"] = "C"
+	mapping["C Z"] = "A"
+	result := make([]string, len(lines))
+	for i, line := range lines {
+		newValue := mapping[strings.TrimSpace(line)]
+		result[i] = fmt.Sprintf("%c %v", line[OpponentMoveLineIndex], newValue)
+	}
+	return result
+}
+
+func convertLinesToXYZ(lines []string) []string {
+	result := make([]string, len(lines))
+	for i, line := range lines {
+		newValue := int8(line[PlayerMoveLineIndex]) + OpponentPlayerMoveDistance
+		result[i] = fmt.Sprintf("%c %c", line[OpponentMoveLineIndex], newValue)
+	}
+	return result
 }
 
 func getFileLines(filePath string) ([]string, error) {
