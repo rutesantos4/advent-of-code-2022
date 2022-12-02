@@ -90,7 +90,7 @@ func computeScore(pm int8, om int8) []int {
 	case 1:
 		score[0] += WinPoints
 	case 0:
-		score[0] += 66 - 24
+		score[0] += DrawPoints
 		score[1] += DrawPoints
 	case -1:
 		score[1] += WinPoints
