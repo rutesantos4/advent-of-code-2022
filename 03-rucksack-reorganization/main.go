@@ -15,7 +15,7 @@ func main() {
 
 	log.Printf("inputFilePath %v\n", *inputFilePath)
 
-	log.Printf("> Find the item type that appears in both compartments of each rucksack. What is the sum of the priorities of those item types?")
+	log.Printf("> (1st Puzzle) Find the item type that appears in both compartments of each rucksack. What is the sum of the priorities of those item types?")
 
 	rucksacks, err := parseFile(*inputFilePath)
 
@@ -28,6 +28,11 @@ func main() {
 
 	log.Printf("Sum of first shared item type priorities is: %d", sumOfPriorities)
 
+	log.Printf("> (2nd Puzzle) Find the item type that corresponds to the badges of each three-Elf group. What is the sum of the priorities of those item types?")
+
+	sumOfBadgesPriorities := rucksacks.ComputeSumOfGroupsBadgesPriorityValues()
+
+	log.Printf("Sum of badges of each three-Elf group priorities is: %d", sumOfBadgesPriorities)
 }
 
 const (
@@ -53,6 +58,34 @@ func (rs Rucksacks) ComputeSumOfFirstSharedItemTypePriorityValues() uint {
 	}
 
 	return sum
+}
+
+func (rs Rucksacks) ComputeSumOfGroupsBadgesPriorityValues() uint {
+	sum := uint(0)
+
+	for i := 0; i < len(rs)-2; i = i + 3 {
+		sum += uint(ComputeSumOfBadgesPriorityValues(rs[i], rs[i+1], rs[i+2]))
+	}
+
+	return sum
+}
+
+func ComputeSumOfBadgesPriorityValues(r1 Rucksack, r2 Rucksack, r3 Rucksack) uint8 {
+
+	r1Items := append(r1.FirstCompartementItems, r1.SecondCompartementItems...)
+	r2Items := append(r2.FirstCompartementItems, r2.SecondCompartementItems...)
+	r3Items := append(r3.FirstCompartementItems, r3.SecondCompartementItems...)
+	for _, r1it := range r1Items {
+		for _, r2it := range r2Items {
+			for _, r3it := range r3Items {
+				if r1it == r2it && r2it == r3it {
+					return itemTypeToPriorityValue(r1it)
+				}
+			}
+		}
+	}
+
+	return uint8(0)
 }
 
 func (r Rucksack) FirstSharedItemTypePriority() uint8 {
