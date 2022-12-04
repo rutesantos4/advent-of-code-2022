@@ -3,6 +3,7 @@ package main
 
 import (
 	"flag"
+	"fmt"
 	"io/ioutil"
 	"log"
 	"os"
@@ -25,24 +26,44 @@ func main() {
 		return
 	}
 
-	sumOfPriorities := elvesPair.ComputeNumberOfFullyOverlapingSections()
+	fullyOverlappingSectionsCount := elvesPair.ComputeNumberOfFullyOverlappingSections()
 
-	log.Printf("The number of assignment pairs that one range fully contain the other is: %d", sumOfPriorities)
+	log.Printf("The number of assignment pairs that one range fully contain the other is: %d", fullyOverlappingSectionsCount)
+
+	log.Printf("> (2nd Puzzle) In how many assignment pairs does one range fully contain the other?")
+
+	overlappingSectionsCount := elvesPair.ComputeNumberOfOverlappingSections()
+
+	log.Printf("The number of assignment pairs that overlap the other is: %d", overlappingSectionsCount)
 }
 
 type ElfPair struct {
-	FirstElfSections        []int
-	SecondElfSections       []int
-	FullyOverlapingSections []int
+	FirstElfSections  []int
+	SecondElfSections []int
+	Overlaps          bool
+	FullyOverlaps     bool
 }
 
 type ElvesPair []ElfPair
 
-func (this ElvesPair) ComputeNumberOfFullyOverlapingSections() uint {
+func (this ElvesPair) ComputeNumberOfFullyOverlappingSections() uint {
 	sum := uint(0)
 
 	for _, pair := range this {
-		if len(pair.FullyOverlapingSections) > 0 {
+		if pair.FullyOverlaps {
+			sum++
+		}
+	}
+
+	return sum
+
+}
+
+func (this ElvesPair) ComputeNumberOfOverlappingSections() uint {
+	sum := uint(0)
+
+	for _, pair := range this {
+		if pair.Overlaps {
 			sum++
 		}
 	}
@@ -55,12 +76,14 @@ func lineToElfPair(l string) ElfPair {
 	elves := strings.Split(l, ",")
 	firstElfSections := sectionRangeToArray(elves[0])
 	secondElfSections := sectionRangeToArray(elves[1])
+	overlapingSections := computeOverlapingSections(firstElfSections, secondElfSections)
 	fullyOverlapingSections := computeFullyOverlapingSections(firstElfSections, secondElfSections)
 
 	return ElfPair{
-		FirstElfSections:        firstElfSections,
-		SecondElfSections:       secondElfSections,
-		FullyOverlapingSections: fullyOverlapingSections,
+		FirstElfSections:  firstElfSections,
+		SecondElfSections: secondElfSections,
+		Overlaps:          len(overlapingSections) > 0,
+		FullyOverlaps:     len(fullyOverlapingSections) > 0,
 	}
 }
 
@@ -70,13 +93,44 @@ func computeFullyOverlapingSections(firstElfSections []int, secondElfSections []
 	ss := secondElfSections[0]
 	se := secondElfSections[len(secondElfSections)-1]
 
+	var sections []int
+
 	if fs <= ss && fe >= se {
-		return secondElfSections
+		sections = secondElfSections
+	} else if fs >= ss && fe <= se {
+		sections = firstElfSections
+	} else {
+		sections = []int{}
 	}
-	if fs >= ss && fe <= se {
-		return firstElfSections
+
+	return sections
+}
+
+func computeOverlapingSections(firstElfSections []int, secondElfSections []int) []int {
+	fs := firstElfSections[0]
+	fe := firstElfSections[len(firstElfSections)-1]
+	ss := secondElfSections[0]
+	se := secondElfSections[len(secondElfSections)-1]
+
+	var sections []int
+
+	if fs <= ss && fe >= se {
+		//fully overlapping
+		sections = secondElfSections
+	} else if fs >= ss && fe <= se {
+		//fully overlapping
+		sections = firstElfSections
+	} else if fs < ss && fe >= ss && fe < se {
+		//overlapping
+		sections = sectionRangeToArray(fmt.Sprintf("%v-%v", ss, fe))
+	} else if fs > ss && fs <= se && fe > se {
+		//overlapping
+		sections = sectionRangeToArray(fmt.Sprintf("%v-%v", fs, se))
+	} else {
+		sections = []int{}
 	}
-	return []int{}
+
+	return sections
 }
 
 func sectionRangeToArray(sectionRange string) []int {
