@@ -11,7 +11,7 @@ import (
 )
 
 func main() {
-	var inputFilePath = flag.String("inputFilePath", "./inputr.txt", "Input File")
+	var inputFilePath = flag.String("inputFilePath", "./inputf.txt", "Input File")
 	flag.Parse()
 
 	log.Printf("inputFilePath %v\n", *inputFilePath)
@@ -73,7 +73,7 @@ func computeFullyOverlapingSections(firstElfSections []int, secondElfSections []
 	if fs <= ss && fe >= se {
 		return secondElfSections
 	}
-	if fs >= ss && fe >= se {
+	if fs >= ss && fe <= se {
 		return firstElfSections
 	}
 	return []int{}
