@@ -92,6 +92,17 @@ func (r Rearrangement) ProcessRearrangementWithCrateMover9001() {
 	for _, move := range r.Moves {
 		orgCrates := r.CratesStack[move.From]
 		dstCrates := r.CratesStack[move.To]
+
+		// In Go, append can either me mutable or immutable
+		// A slice of a slice ([:...]) is a view of the sliced slice
+		// Hence we need to create a copy of the moving crates, else we will
+		// end up swapping both crates stacks
+		// Example:
+		// a := []int {1, 2, 3}
+		// b := a[2:]
+		// b[0] = 5
+		// Slice a is now = [1, 2 ,5]
+
 		cratesToMove := orgCrates[:move.Count]
 		cratesToMoveCopy := make(Crates, len(cratesToMove))
 		copy(cratesToMoveCopy, cratesToMove)
