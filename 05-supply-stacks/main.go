@@ -75,12 +75,16 @@ func linesToCratesStack(lines []string) map[int]Crates {
 	result := make(map[int]Crates)
 	lineStacksNumbers := lines[indexOfLineOfStacksIds]
 	stacksNumbers := strings.Split(lineStacksNumbers, " ")
+
 	for _, stackNumberString := range stacksNumbers {
-		if stackNumberString == "" || stackNumberString == "\r" {
+
+		if strings.TrimSpace(stackNumberString) == "" {
 			continue
 		}
+
 		index := strings.Index(lineStacksNumbers, stackNumberString)
 		stackNumber, _ := strconv.Atoi(stackNumberString)
+
 		var crates []byte
 		for i := 0; i < indexOfLineOfStacksIds; i++ {
 			stacksIds := lines[i][index]
@@ -88,6 +92,7 @@ func linesToCratesStack(lines []string) map[int]Crates {
 				crates = append(crates, stacksIds)
 			}
 		}
+
 		result[stackNumber] = crates
 	}
 	return result
