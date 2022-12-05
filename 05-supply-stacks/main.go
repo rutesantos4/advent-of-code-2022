@@ -34,7 +34,7 @@ func main() {
 }
 
 const (
-	RegularExpressinOfMoves string = `move (.*?) from (.*?) to (.?)`
+	MovesRegularExpression string = `move (.*?) from (.*?) to (.?)`
 )
 
 type Rearrangement struct {
@@ -52,7 +52,9 @@ type Move struct {
 
 func (r Rearrangement) GetTopCratesStacks() string {
 	var result string
-	for i := 1; i < len(r.CratesStack)+1; i++ {
+	cratesRange := len(r.CratesStack) + 1
+
+	for i := 1; i < cratesRange; i++ {
 		crate := r.CratesStack[i][0]
 		result += fmt.Sprintf("%c", crate)
 	}
@@ -99,7 +101,7 @@ func linesToCratesStack(lines []string) map[int]Crates {
 }
 
 func lineToMove(l string) Move {
-	re := regexp.MustCompile(RegularExpressinOfMoves)
+	re := regexp.MustCompile(MovesRegularExpression)
 	match := re.FindStringSubmatch(l)
 
 	count, _ := strconv.Atoi(match[1])
@@ -121,22 +123,27 @@ func parseFile(filePath string) (Rearrangement, error) {
 	}
 
 	var cratesStackLines []string
-	lineNumer := 0
-	for lineNumer = 0; lineNumer < len(lines); lineNumer++ {
-		line := lines[lineNumer]
+	lineNumber := 0
+	lineCount := len(lines)
+
+	for lineNumber = 0; lineNumber < lineCount; lineNumber++ {
+		line := lines[lineNumber]
+
 		if strings.TrimSpace(line) == "" {
-			lineNumer++
+			lineNumber++
 			break
 		}
+
 		cratesStackLines = append(cratesStackLines, line)
 	}
 
 	cratesStack := linesToCratesStack(cratesStackLines)
 
-	numberMoves := len(lines) - lineNumer
-	moves := make([]Move, len(lines)-lineNumer)
+	numberMoves := lineCount - lineNumber
+	moves := make([]Move, lineCount-lineNumber)
+
 	for i := 0; i < numberMoves; i++ {
-		moves[i] = lineToMove(lines[i+lineNumer])
+		moves[i] = lineToMove(lines[i+lineNumber])
 	}
 
 	return Rearrangement{
