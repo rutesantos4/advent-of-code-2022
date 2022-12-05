@@ -18,7 +18,7 @@ func main() {
 
 	log.Printf("inputFilePath %v\n", *inputFilePath)
 
-	log.Printf("> (1st Puzzle) After the rearrangement procedure completes, what crate ends up on top of each stack?")
+	log.Printf("> (1st Puzzle) After the rearrangement procedure completes, what crate ends up on top of each stack (Mover 9000)?")
 
 	rearrangement, err := parseFile(*inputFilePath)
 
@@ -27,10 +27,21 @@ func main() {
 		return
 	}
 
-	rearrangement.ProcessRearrangement()
-	topCratesOfStacks := rearrangement.GetTopCratesStacks()
+	rearrangementWithMover9000 := rearrangement.Copy()
 
-	log.Printf("The crates that end up on top of each stack are: %v", topCratesOfStacks)
+	rearrangementWithMover9000.ProcessRearrangementWithCrateMover9000()
+	topCratesOfStacksWithMover9000 := rearrangementWithMover9000.GetTopCratesStacks()
+
+	log.Printf("The crates that end up on top of each stack are: %v", topCratesOfStacksWithMover9000)
+
+	log.Printf("> (2nd Puzzle) After the rearrangement procedure completes, what crate ends up on top of each stack (Mover 9001)?")
+
+	rearrangementWithMover9001 := rearrangement.Copy()
+
+	rearrangementWithMover9001.ProcessRearrangementWithCrateMover9001()
+	topCratesOfStacksWithMover9001 := rearrangementWithMover9001.GetTopCratesStacks()
+
+	log.Printf("The crates that end up on top of each stack are: %v", topCratesOfStacksWithMover9001)
 }
 
 const (
@@ -38,9 +49,11 @@ const (
 )
 
 type Rearrangement struct {
-	CratesStack map[int]Crates //int - stack number | Crates - list if crates
-	Moves       []Move
+	CratesStack  map[int]Crates //int - stack number | Crates - list if crates
+	Moves        []Move
+	IsRearranged bool
 }
+
 type Crates []byte //byte - crate id
 
 type Move struct {
@@ -58,10 +71,11 @@ func (r Rearrangement) GetTopCratesStacks() string {
 		crate := r.CratesStack[i][0]
 		result += fmt.Sprintf("%c", crate)
 	}
+
 	return result
 }
 
-func (r Rearrangement) ProcessRearrangement() {
+func (r Rearrangement) ProcessRearrangementWithCrateMover9000() {
 	for _, move := range r.Moves {
 		for i := 0; i < move.Count; i++ {
 			crates := r.CratesStack[move.From]
@@ -69,6 +83,47 @@ func (r Rearrangement) ProcessRearrangement() {
 			r.CratesStack[move.From] = crates[1:]
 			r.CratesStack[move.To] = append([]byte{value}, r.CratesStack[move.To]...)
 		}
+	}
+
+	r.IsRearranged = true
+}
+
+func (r Rearrangement) ProcessRearrangementWithCrateMover9001() {
+	for _, move := range r.Moves {
+		orgCrates := r.CratesStack[move.From]
+		dstCrates := r.CratesStack[move.To]
+		cratesToMove := orgCrates[:move.Count]
+		cratesToMoveCopy := make(Crates, len(cratesToMove))
+		copy(cratesToMoveCopy, cratesToMove)
+
+		dstCrates = append(cratesToMoveCopy, dstCrates...)
+		orgCrates = orgCrates[move.Count:]
+
+		r.CratesStack[move.From] = orgCrates
+		r.CratesStack[move.To] = dstCrates
+
+	}
+
+	r.IsRearranged = true
+}
+
+func (r Rearrangement) Copy() Rearrangement {
+	mc := make([]Move, len(r.Moves))
+	copy(mc, r.Moves)
+
+	csc := make(map[int]Crates, len(r.CratesStack))
+
+	for k, v := range r.CratesStack {
+		vc := make(Crates, len(v))
+		copy(vc, v)
+
+		csc[k] = vc
+	}
+
+	return Rearrangement{
+		Moves:        mc,
+		CratesStack:  csc,
+		IsRearranged: r.IsRearranged,
 	}
 }
 
@@ -147,8 +202,9 @@ func parseFile(filePath string) (Rearrangement, error) {
 	}
 
 	return Rearrangement{
-		CratesStack: cratesStack,
-		Moves:       moves,
+		CratesStack:  cratesStack,
+		Moves:        moves,
+		IsRearranged: false,
 	}, nil
 }
 
