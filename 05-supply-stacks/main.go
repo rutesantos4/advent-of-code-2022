@@ -124,7 +124,7 @@ func parseFile(filePath string) (Rearrangement, error) {
 	lineNumer := 0
 	for lineNumer = 0; lineNumer < len(lines); lineNumer++ {
 		line := lines[lineNumer]
-		if line == "\r" {
+		if strings.TrimSpace(line) == "" {
 			lineNumer++
 			break
 		}
