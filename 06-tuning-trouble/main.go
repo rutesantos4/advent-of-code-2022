@@ -25,9 +25,10 @@ func main() {
 
 	log.Printf("> (1st Puzzle) How many characters need to be processed before the first start-of-packet marker is detected?")
 
-	pmp := dataBuffer.FindPacketMarkersPosition()
+	firstPacketMarkersPosition := dataBuffer.FindFirstPacketMarkersPosition()
 
-	fmt.Printf("%v\n", pmp)
+	fmt.Printf("The number of characters that need to be processed before the first start-of-packet marker is detected is: %v\n", firstPacketMarkersPosition)
+
 }
 
 const (
@@ -38,15 +39,36 @@ type DataBuffer struct {
 	ByteStream []byte
 }
 
-func (b DataBuffer) FindPacketMarkersPosition() map[int]byte {
+func (b DataBuffer) FindFirstPacketMarkersPosition() int {
+	packetMarkersPosition := b.FindMarkersPosition()
+
+	keys := make([]int, len(packetMarkersPosition))
+
+	i := 0
+	for k := range packetMarkersPosition {
+		keys[i] = k
+		i++
+	}
+
+	minKey := keys[0]
+	for _, v := range keys {
+		if v < minKey {
+			minKey = v
+		}
+	}
+
+	return minKey
+}
+
+func (b DataBuffer) FindMarkersPosition() map[int]byte {
 	bs := b.ByteStream
 	bslen := len(bs)
 
 	pmp := map[int]byte{}
 
 	for i := 0; i < bslen; i++ {
-		ni := i + 1
-		si := ni + SequenceOfDifferentBytesUntilPacketMarker + 1
+		ni := i
+		si := ni + SequenceOfDifferentBytesUntilPacketMarker
 		if ni < bslen && si < bslen {
 			seq := bs[ni:si]
 			set := map[byte]bool{}
@@ -55,10 +77,8 @@ func (b DataBuffer) FindPacketMarkersPosition() map[int]byte {
 				set[v] = true
 			}
 
-			if len(set) != len(seq) {
-				pmp[si] = seq[SequenceOfDifferentBytesUntilPacketMarker]
-
-				i += SequenceOfDifferentBytesUntilPacketMarker
+			if len(set) == len(seq) {
+				pmp[si] = seq[SequenceOfDifferentBytesUntilPacketMarker-1]
 			}
 		}
 	}
