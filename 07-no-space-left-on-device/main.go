@@ -35,6 +35,14 @@ func main() {
 	}
 
 	log.Printf("Sum of diretories which total size is lower than %d is: %d", PuzzleDirectorySizeLimit, sum)
+
+	log.Printf("> (2nd Puzzle) Find the smallest directory that, if deleted, would free up enough space on the filesystem to run the update. What is the total size of that directory?")
+
+	spaceToBeDeleted := PuzzleLeastUnusedSpaceSize - fs.TotalSize
+
+	directoryWhichTotalSizeIsEnoughToBeDeleted := fs.FindSmallestDirectoryWithEnoughSize(spaceToBeDeleted)
+
+	log.Printf("Total size of directory with at least %d is: %d", spaceToBeDeleted, directoryWhichTotalSizeIsEnoughToBeDeleted.TotalSize)
 }
 
 const (
@@ -42,6 +50,7 @@ const (
 	DirectoryIndicator         = "$"
 	ProgramArgumentsStartIndex = 2
 	PuzzleDirectorySizeLimit   = 100000
+	PuzzleLeastUnusedSpaceSize = 30000000
 )
 
 type DataBuffer struct {
@@ -64,6 +73,33 @@ type File struct {
 type Program struct {
 	Command   string
 	Arguments []string
+}
+
+func (d Directory) FindSmallestDirectoryWithEnoughSize(enoughSize uint) Directory {
+	list := d.FindDirectoriesWithEnoughSize(enoughSize)
+
+	ds := list[0]
+	for _, v := range list {
+		if ds.TotalSize > v.TotalSize {
+			ds = v
+		}
+	}
+
+	return ds
+}
+
+func (d Directory) FindDirectoriesWithEnoughSize(enoughSize uint) []Directory {
+	ds := []Directory{}
+
+	if d.TotalSize >= enoughSize {
+		ds = append(ds, d)
+	}
+
+	for _, v := range d.Directories {
+		ds = append(ds, v.FindDirectoriesWithTotalSizeOfAtMost(enoughSize)...)
+	}
+
+	return ds
 }
 
 func (d Directory) FindDirectoriesWithTotalSizeOfAtMost(sizeLimit uint) []Directory {
@@ -238,7 +274,7 @@ func getFileLines(filePath string) ([]string, error) {
 	lineBreak := "\n"
 
 	if runtime.GOOS == "windows" {
-		lineBreak = "\r"
+		lineBreak = "\r\n"
 	}
 
 	return strings.Split(string(rawBytes), lineBreak), nil
