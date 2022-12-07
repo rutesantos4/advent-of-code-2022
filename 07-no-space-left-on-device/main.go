@@ -39,7 +39,7 @@ func main() {
 
 const (
 	CommandExecutionIndicator  = "$"
-	DirectoryIndicator         = "$"
+	DirectoryIndicator         = "dir"
 	ProgramArgumentsStartIndex = 2
 	PuzzleDirectorySizeLimit   = 100000
 )
@@ -186,18 +186,27 @@ func parseFileToFileSystem(filePath string) (*Directory, error) {
 				if p.IsChangeDirectoryToUpperLevelProgram() {
 					dirName := p.Arguments[len(p.Arguments)-1]
 
-					d := Directory{
-						Name: dirName,
+					var d *Directory
+
+					if currentDirectory != nil {
+						for _, v := range currentDirectory.Directories {
+							if v.Name == dirName {
+								d = v
+							}
+						}
+					}
+
+					if d == nil {
+						d = &Directory{
+							Name: dirName,
+						}
 					}
 
 					d.ParentDirectory = currentDirectory
 
-					currentDirectory = &d
+					currentDirectory = d
 				} else {
-					d := currentDirectory
 					currentDirectory = currentDirectory.ParentDirectory
-
-					currentDirectory.Directories = append(currentDirectory.Directories, d)
 				}
 			} else if p.IsListFilesProgram() {
 				collectDirectoryFiles = true
