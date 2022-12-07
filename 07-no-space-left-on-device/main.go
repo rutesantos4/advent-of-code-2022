@@ -6,6 +6,7 @@ import (
 	"io/ioutil"
 	"log"
 	"os"
+	"runtime"
 	"strconv"
 	"strings"
 )
@@ -233,5 +234,12 @@ func getFileLines(filePath string) ([]string, error) {
 		log.Fatalf("Error while reading file: %v", err)
 		return nil, err
 	}
-	return strings.Split(string(rawBytes), "\n"), nil
+
+	lineBreak := "\n"
+
+	if runtime.GOOS == "windows" {
+		lineBreak = "\r"
+	}
+
+	return strings.Split(string(rawBytes), lineBreak), nil
 }
