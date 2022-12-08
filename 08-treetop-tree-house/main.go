@@ -38,35 +38,31 @@ func (g Grid) ComputeNumberOfVisibleTrees() int {
 
 	for l := 1; l < nLines-1; l++ {
 		for c := 1; c < nColumns-1; c++ {
-			element := g[l][c]
-			log.Printf("LINHA %v COLUNA %v -> %v", l, c, element)
 
 			if g.isVisibleFromLeft(l, c) {
-				log.Printf("Tree is visible from left-> %v\n", element)
 				visibleInteriorTrees++
 				continue
 			}
-			if g.isVisibleFromRigth(l, c) {
-				log.Printf("Tree is visible from rigth-> %v\n", element)
+
+			if g.isVisibleFromRight(l, c) {
 				visibleInteriorTrees++
 				continue
 			}
+
 			if g.isVisibleFromTop(l, c) {
-				log.Printf("Tree is visible from top-> %v\n", element)
 				visibleInteriorTrees++
 				continue
 			}
+
 			if g.isVisibleFromBottom(l, c) {
-				log.Printf("Tree is visible from bottom-> %v\n", element)
 				visibleInteriorTrees++
 				continue
 			}
+
 		}
-		log.Println("\n*****")
 	}
 
 	edges := nLines*2 + (nColumns-2)*2
-	log.Printf("edges -> %v", edges)
 	return edges + visibleInteriorTrees
 }
 
@@ -82,7 +78,7 @@ func (g Grid) isVisibleFromLeft(line int, column int) bool {
 	return true
 }
 
-func (g Grid) isVisibleFromRigth(line int, column int) bool {
+func (g Grid) isVisibleFromRight(line int, column int) bool {
 	treeToBeCompared := g[line][column]
 	end := len(g[line])
 
