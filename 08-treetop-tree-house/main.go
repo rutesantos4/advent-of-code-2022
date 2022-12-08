@@ -111,7 +111,7 @@ func (g Grid) isVisibleFromBottom(line int, column int) bool {
 	treeToBeCompared := g[line][column]
 	end := len(g[line])
 
-	for i := line - 1; i < end; i++ {
+	for i := line + 1; i < end; i++ {
 		if g[i][column] >= treeToBeCompared {
 			return false
 		}
