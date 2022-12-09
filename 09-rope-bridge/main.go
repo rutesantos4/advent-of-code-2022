@@ -11,7 +11,7 @@ import (
 )
 
 func main() {
-	var inputFilePath = flag.String("inputFilePath", "./inputf.txt", "Input File")
+	var inputFilePath = flag.String("inputFilePath", "./inputr.txt", "Input File")
 	flag.Parse()
 
 	log.Printf("inputFilePath %v\n", *inputFilePath)
@@ -30,6 +30,21 @@ func main() {
 	positionsVisitCount := puzzle.CountPositionsVisited()
 
 	log.Printf("Number of positions visited by tail: %d", positionsVisitCount)
+
+	puzzle, err = parseFileToPuzzle(*inputFilePath)
+
+	if err != nil {
+		log.Fatalf("Error Parsing file %v: %v", *inputFilePath, err)
+		return
+	}
+
+	log.Printf("> (2nd Puzzle) Simulate your complete series of motions on a larger rope with ten knots. How many positions does the tail of the rope visit at least once?")
+
+	puzzle.SimulatePuzzle2()
+
+	positionsVisitCount = puzzle.CountPositionsVisited()
+
+	log.Printf("Number of positions visited by the last tail: %d", positionsVisitCount)
 }
 
 const (
@@ -113,6 +128,76 @@ func (p *Puzzle) SimulatePuzzle() {
 					grid[tailL][tailC] = 0
 				}
 				grid[tailL][tailC]++
+			}
+		}
+	}
+}
+
+func (p *Puzzle) SimulatePuzzle2() {
+
+	numberOfTails := 9
+	tailsL := make([]int, numberOfTails)
+	tailsC := make([]int, numberOfTails)
+
+	grid := p.Grid
+	moves := p.Moves
+
+	cl := 0
+	cc := 0
+
+	tailL := cl
+	tailC := cc
+	headL := cl
+	headC := cc
+
+	if grid[tailL] == nil {
+		grid[tailL] = make(map[int]Position)
+		grid[tailL][tailC] = 1
+	}
+
+	for _, m := range moves {
+
+		for i := 0; i < m.Hops; i++ {
+
+			cl = headL
+			cc = headC
+
+			switch m.Direction {
+			case Up:
+				headL--
+			case Down:
+				headL++
+			case Left:
+				headC--
+			case Right:
+				headC++
+			}
+
+			pl := headL
+			pc := headC
+
+			for tail := 0; tail < numberOfTails; tail++ {
+				tailL = tailsL[tail]
+				tailC = tailsC[tail]
+
+				if tailCanBeMoved(tailL, tailC, pl, pc) {
+
+					tailsL[tail] = cl
+					tailsC[tail] = cc
+					tailL = cl
+					tailC = cc
+					// Only store the last one
+					if tail == numberOfTails-1 {
+						log.Println("** Storing **")
+						if grid[tailL] == nil {
+							grid[tailL] = make(map[int]Position)
+							grid[tailL][tailC] = 0
+						}
+						grid[tailL][tailC]++
+					}
+				}
+				pl = cl
+				pc = cc
 			}
 		}
 	}
