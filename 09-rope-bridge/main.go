@@ -48,7 +48,8 @@ type Position byte
 
 type Moves []Move
 
-type Grid [][]Position
+// type Grid [][]Position
+type Grid map[int]map[int]Position
 
 type Puzzle struct {
 	Grid  Grid
@@ -74,85 +75,84 @@ func (p *Puzzle) SimulatePuzzle() {
 	grid := p.Grid
 	moves := p.Moves
 
-	cl := len(grid) - 1
+	cl := 0
 	cc := 0
-	maxl := cl + 1
-	maxc := len(grid[0])
 
-	isHeadOnTail := false
+	tailL := cl
+	tailC := cc
+	headL := cl
+	headC := cc
 
-	pl := cl
-	pc := cc
+	if grid[tailL] == nil {
+		grid[tailL] = make(map[int]Position)
+		grid[tailL][tailC] = 1
+	}
 
 	for _, m := range moves {
-		canMarkVisited := false
-
-		pc = cc
-		pl = cl
 
 		for i := 0; i < m.Hops; i++ {
-			if canMarkVisited && !isHeadOnTail {
-				grid[cl][cc].markVisited()
-			}
-
-			// todo: falta validar se H está em cima de T
+			cl = headL
+			cc = headC
 
 			switch m.Direction {
 			case Up:
-				cl--
+				headL--
 			case Down:
-				cl++
+				headL++
 			case Left:
-				cc--
+				headC--
 			case Right:
-				cc++
+				headC++
 			}
 
-			if cl == maxl {
-				cl--
-			} else if cc == maxc {
-				cc--
-			} else if cl < 0 {
-				cl = 0
-			} else if cc < 0 {
-				cc = 0
-			} else if !canMarkVisited {
-				canMarkVisited = true
-				isHeadOnTail = false
-			} else if pc == cc && pl == cl {
-				isHeadOnTail = true
+			if tailCanBeMoved(tailL, tailC, headL, headC) {
+				tailL = cl
+				tailC = cc
+				if grid[tailL] == nil {
+					grid[tailL] = make(map[int]Position)
+					grid[tailL][tailC] = 0
+				}
+				grid[tailL][tailC]++
 			}
-
-			canMarkVisited = true
 		}
 	}
+}
+
+func tailCanBeMoved(tailL int, tailC int, headL int, headC int) bool {
+	// on top
+	if tailC == headC && tailL == headL {
+		return false
+	}
+
+	// up or down
+	if tailC == headC && (tailL+1 == headL || tailL-1 == headL) {
+		return false
+	}
+
+	// left or right
+	if tailL == headL && (tailC+1 == headC || tailC-1 == headC) {
+		return false
+	}
+
+	// diagonal
+	if (tailL-1 == headL && tailC-1 == headC) || (tailL-1 == headL && tailC+1 == headC) {
+		return false
+	}
+
+	// diagonal
+	if (tailL+1 == headL && tailC-1 == headC) || (tailL+1 == headL && tailC+1 == headC) {
+		return false
+	}
+
+	return true
 }
 
 func (p Position) visited() bool {
 	return p != 0
 }
 
-func (p *Position) markVisited() {
-	*p++
-}
-
 func (ms Moves) toGrid() Grid {
-	l := 0
-	c := 0
-
-	for _, m := range ms {
-		if (m.Direction == Up || m.Direction == Down) && m.Hops > l {
-			l = m.Hops
-		} else if (m.Direction == Left || m.Direction == Right) && m.Hops > c {
-			c = m.Hops
-		}
-	}
-
-	grid := make(Grid, l)
-
-	for i, _ := range grid {
-		grid[i] = make([]Position, c)
-	}
+	grid := make(Grid)
 
 	return grid
 }
