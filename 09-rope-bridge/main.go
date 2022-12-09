@@ -16,24 +16,20 @@ func main() {
 
 	log.Printf("inputFilePath %v\n", *inputFilePath)
 
-	grid, err := parseFileToGrid(*inputFilePath)
+	puzzle, err := parseFileToPuzzle(*inputFilePath)
 
 	if err != nil {
 		log.Fatalf("Error Parsing file %v: %v", *inputFilePath, err)
 		return
 	}
 
-	log.Printf("> (1st Puzzle) Consider your map; how many trees are visible from outside the grid?")
+	log.Printf("> (1st Puzzle) Simulate your complete hypothetical series of motions. How many positions does the tail of the rope visit at least once?")
 
-	visibleTrees := grid.ComputeNumberOfVisibleTrees()
+	puzzle.SimulatePuzzle()
 
-	log.Printf("Number of trees visible from outside the grid is: %d", visibleTrees)
+	positionsVisitCount := puzzle.CountPositionsVisited()
 
-	log.Printf("> (2nd Puzzle) Consider each tree on your map. What is the highest scenic score possible for any tree?")
-
-	highestScenicScore := grid.ComputeHighestTreeScenicScore()
-
-	log.Printf("Highest scenic score is: %d", highestScenicScore)
+	log.Printf("Number of positions visited by tail: %d", positionsVisitCount)
 }
 
 const (
@@ -59,6 +55,20 @@ type Puzzle struct {
 	Moves Moves
 }
 
+func (p Puzzle) CountPositionsVisited() int {
+	count := 0
+
+	for _, pl := range p.Grid {
+		for _, pc := range pl {
+			if pc.visited() {
+				count++
+			}
+		}
+	}
+
+	return count
+}
+
 func (p *Puzzle) SimulatePuzzle() {
 
 	grid := p.Grid
@@ -66,10 +76,44 @@ func (p *Puzzle) SimulatePuzzle() {
 
 	cl := len(grid) - 1
 	cc := 0
+	maxl := cl + 1
+	maxc := len(grid[0])
 
 	for _, m := range moves {
+		canMarkVisited := false
+		isHeadOnTail := true
+
 		for i := 0; i < m.Hops; i++ {
-			if 
+			if canMarkVisited && !isHeadOnTail {
+				grid[cl][cc].markVisited()
+			}
+
+			// todo: falta validar se H está em cima de T
+
+			switch m.Direction {
+			case Up:
+				cl--
+			case Down:
+				cl++
+			case Left:
+				cc--
+			case Right:
+				cc++
+			}
+
+			if cl == maxl {
+				cl--
+			} else if cc == maxc {
+				cc--
+			} else if cl < 0 {
+				cl = 0
+			} else if cc < 0 {
+				cc = 0
+			} else if !canMarkVisited {
+				canMarkVisited = true
+			}
+
+			canMarkVisited = true
 		}
 	}
 }
