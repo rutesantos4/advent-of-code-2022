@@ -79,9 +79,16 @@ func (p *Puzzle) SimulatePuzzle() {
 	maxl := cl + 1
 	maxc := len(grid[0])
 
+	isHeadOnTail := false
+
+	pl := cl
+	pc := cc
+
 	for _, m := range moves {
 		canMarkVisited := false
-		isHeadOnTail := true
+
+		pc = cc
+		pl = cl
 
 		for i := 0; i < m.Hops; i++ {
 			if canMarkVisited && !isHeadOnTail {
@@ -111,6 +118,9 @@ func (p *Puzzle) SimulatePuzzle() {
 				cc = 0
 			} else if !canMarkVisited {
 				canMarkVisited = true
+				isHeadOnTail = false
+			} else if pc == cc && pl == cl {
+				isHeadOnTail = true
 			}
 
 			canMarkVisited = true
