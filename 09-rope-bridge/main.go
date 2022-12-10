@@ -5,6 +5,7 @@ import (
 	"bufio"
 	"flag"
 	"log"
+	"math"
 	"os"
 	"strconv"
 	"strings"
@@ -177,30 +178,45 @@ func (p *Puzzle) SimulatePuzzle2() {
 			pc := headC
 
 			for tail := 0; tail < numberOfTails; tail++ {
+				movedTail := moveTail(tail, pl, pc, tailsL, tailsC)
 				tailL = tailsL[tail]
 				tailC = tailsC[tail]
-
-				if tailCanBeMoved(tailL, tailC, pl, pc) {
-
-					tailsL[tail] = cl
-					tailsC[tail] = cc
-					tailL = cl
-					tailC = cc
-					// Only store the last one
-					if tail == numberOfTails-1 {
-						log.Println("** Storing **")
-						if grid[tailL] == nil {
-							grid[tailL] = make(map[int]Position)
-							grid[tailL][tailC] = 0
-						}
-						grid[tailL][tailC]++
+				if movedTail && tail == numberOfTails-1 {
+					if grid[tailL] == nil {
+						grid[tailL] = make(map[int]Position)
+						grid[tailL][tailC] = 0
 					}
+					grid[tailL][tailC]++
 				}
-				pl = cl
-				pc = cc
+				pl = tailL
+				pc = tailC
 			}
 		}
 	}
+}
+
+func moveTail(tail int, previousL int, previousC int, tailsL []int, tailsC []int) bool {
+	tailL := tailsL[tail]
+	tailC := tailsC[tail]
+	diffL := previousL - tailL
+	diffC := previousC - tailC
+	if int(math.Abs(float64(diffL))) <= 1 && int(math.Abs(float64(diffC))) <= 1 {
+		return false
+	}
+
+	if diffL > 0 {
+		tailsL[tail]++
+	} else if diffL < 0 {
+		tailsL[tail]--
+	}
+
+	if diffC > 0 {
+		tailsC[tail]++
+	} else if diffC < 0 {
+		tailsC[tail]--
+	}
+
+	return true
 }
 
 func tailCanBeMoved(tailL int, tailC int, headL int, headC int) bool {
