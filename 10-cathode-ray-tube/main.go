@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"flag"
 	"log"
+	"math"
 	"os"
 	"strconv"
 	"strings"
@@ -24,12 +25,29 @@ func main() {
 
 	log.Printf("> (1st Puzzle) Find the signal strength during the 20th, 60th, 100th, 140th, 180th, and 220th cycles. What is the sum of these six signal strengths?")
 
+	program.executeCycles()
+
 	cycles := []int{20, 60, 100, 140, 180, 220}
 	sumOfCycleSignalStrengths := program.ComputeCyclesSignalStrengthSum(cycles)
 
 	log.Printf("The sum of these six signal strengths is : %d", sumOfCycleSignalStrengths)
 
+	log.Printf("> (2nd Puzzle) Render the image given by your program. What eight capital letters appear on your CRT?")
+
+	log.Printf("CRT Image rendered \n%v\n", program.CRTImage)
 }
+
+const (
+	Point string = "."
+	Hash  string = "#"
+)
+
+const (
+	CRTWide int = 40
+	CRTHigh int = 6
+
+	SpriteWide int = 3
+)
 
 const (
 	AddxCycles int = 2
@@ -43,6 +61,8 @@ const (
 
 type Program struct {
 	Instructions []Instruction
+	XValues      []XValue
+	CRTImage     Grid
 }
 
 type Instruction struct {
@@ -55,9 +75,11 @@ type XValue struct {
 	During int
 	After  int
 }
+type Grid [][]string
+type Sprite []string
 
 func (p Program) ComputeCyclesSignalStrengthSum(cycles []int) int {
-	xValues := p.computeXValue()
+	xValues := p.XValues
 
 	sum := 0
 	for _, cycle := range cycles {
@@ -67,9 +89,11 @@ func (p Program) ComputeCyclesSignalStrengthSum(cycles []int) int {
 	return sum
 }
 
-func (p Program) computeXValue() []XValue {
+func (p *Program) executeCycles() {
 
 	var xValues []XValue
+	grid := buildGrid()
+	sprite := buildSprite()
 
 	cycle := 0
 	xDuring := 1
@@ -81,6 +105,8 @@ func (p Program) computeXValue() []XValue {
 		for i := 0; i < instructionDuration; i++ {
 			cycle++
 
+			grid.changeValue(cycle, sprite)
+
 			xValues = append(xValues, XValue{
 				Cycle:  cycle,
 				During: xDuring,
@@ -91,12 +117,92 @@ func (p Program) computeXValue() []XValue {
 				xAfter += instruction.IncreaseValue
 			}
 		}
+		sprite.shiftPositions(instruction.IncreaseValue)
 
 		xDuring = xValues[cycle-1].After
 		xAfter = xDuring
 	}
 
-	return xValues
+	p.XValues = xValues
+	p.CRTImage = grid
+}
+
+func (g Grid) changeValue(cycle int, sprite Sprite) {
+	l := int(cycle / CRTWide)
+	remaining := cycle % CRTWide
+	c := remaining - 1
+
+	if remaining == 0 {
+		c = CRTWide - 1
+		l--
+	}
+
+	v := sprite[c]
+	g[l][c] = v
+}
+
+func (g Grid) String() string {
+	lines := len(g)
+	columns := len(g[0])
+	result := "\n"
+	for l := 0; l < lines; l++ {
+		for c := 0; c < columns; c++ {
+			result += g[l][c]
+		}
+		result += "\n"
+	}
+
+	return result
+}
+
+func (s *Sprite) shiftPositions(moves int) {
+
+	//right rotation
+	i := len(*s) - moves
+
+	if moves < 0 {
+		//left rotation
+		i = int(math.Abs(float64(moves)))
+	}
+
+	x, b := (*s)[:i], (*s)[i:]
+	*s = append(b, x...)
+}
+
+func (s Sprite) String() string {
+
+	result := "\n"
+	for _, v := range s {
+		result += v
+	}
+
+	return result
+}
+
+func buildGrid() Grid {
+	l := CRTHigh
+	c := CRTWide
+	grid := make(Grid, l)
+
+	for i := range grid {
+		grid[i] = make([]string, c)
+	}
+
+	return grid
+}
+
+func buildSprite() Sprite {
+	sprite := make(Sprite, CRTWide)
+
+	for i := 0; i < SpriteWide; i++ {
+		sprite[i] = Hash
+	}
+
+	for i := SpriteWide; i < CRTWide; i++ {
+		sprite[i] = Point
+	}
+
+	return sprite
 }
 
 func (i Instruction) Duration() int {
