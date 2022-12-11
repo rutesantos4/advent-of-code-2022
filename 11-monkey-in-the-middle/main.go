@@ -24,14 +24,23 @@ func main() {
 
 	log.Printf("> (1st Puzzle) What is the level of monkey business after 20 rounds of stuff-slinging simian shenanigans?")
 
-	monkeysAfterPuzzleRounds := monkeys.PlayMonkeyInTheMiddleFor(PuzzleGameRounds)
+	monkeysAfterPuzzleRounds := monkeys.PlayMonkeyInTheMiddleFor(PuzzleGameRounds, reduceWorryLevelDivisionBy3())
 	monkeyBusinessLevel := monkeysAfterPuzzleRounds.ComputeMonkeyBusinessLevel()
 
 	log.Printf("The monkey level business after %d rounds is: %d\n", PuzzleGameRounds, monkeyBusinessLevel)
+
+	log.Printf("> (2nd Puzzle) Starting again from the initial state in your puzzle input, what is the level of monkey business after 10000 rounds?")
+
+	monkeysAfterPuzzle2Rounds := monkeys.PlayMonkeyInTheMiddleFor(Puzzle2GameRounds, reduceWorryLevelPuzzleModularArithmetic(monkeys))
+	monkeyBusinessLevelPuzzle2 := monkeysAfterPuzzle2Rounds.ComputeMonkeyBusinessLevel()
+
+	log.Printf("The monkey level business after %d rounds is: %d\n", Puzzle2GameRounds, monkeyBusinessLevelPuzzle2)
+
 }
 
 const (
-	PuzzleGameRounds = 20
+	PuzzleGameRounds  = 20
+	Puzzle2GameRounds = 10000
 )
 
 const (
@@ -46,16 +55,37 @@ type Monkey struct {
 	ItemsWorryLevel           Items
 	WorryLevelUpdateOperation WorryLevelUpdateOperationCallback
 	MonkeyPassTestOperation   MonkeyPassTestOperationCallback
+	DivisionNumber            int
 	PassedItemsCount          int
 }
 
 type MonkeyId byte
 type ItemWorryLevel uint
 type WorryLevelUpdateOperationCallback func(owl ItemWorryLevel) ItemWorryLevel
-type MonkeyPassTestOperationCallback func(wl ItemWorryLevel) (MonkeyId, ItemWorryLevel)
+type MonkeyPassTestOperationCallback func(wl ItemWorryLevel, rwl WorryLevelReductionCallback) (MonkeyId, ItemWorryLevel)
 
 type Items []ItemWorryLevel
 type Monkeys []Monkey
+
+type WorryLevelReductionCallback func(owl ItemWorryLevel) ItemWorryLevel
+
+func reduceWorryLevelDivisionBy3() WorryLevelReductionCallback {
+	return func(owl ItemWorryLevel) ItemWorryLevel {
+		return owl / 3
+	}
+}
+
+// Reduce the worry by applying Modular arithmetic
+func reduceWorryLevelPuzzleModularArithmetic(m Monkeys) WorryLevelReductionCallback {
+	prod := 1
+	for _, v := range m {
+		prod *= v.DivisionNumber
+	}
+
+	return func(owl ItemWorryLevel) ItemWorryLevel {
+		return owl % ItemWorryLevel(prod)
+	}
+}
 
 func (ms Monkeys) ComputeMonkeyBusinessLevel() uint {
 	var firstMaxPassedItemsCount, secondMaxPassedItemsCount int
@@ -74,7 +104,7 @@ func (ms Monkeys) ComputeMonkeyBusinessLevel() uint {
 	return uint(firstMaxPassedItemsCount) * uint(secondMaxPassedItemsCount)
 }
 
-func (ms Monkeys) PlayMonkeyInTheMiddleFor(rounds int) *Monkeys {
+func (ms Monkeys) PlayMonkeyInTheMiddleFor(rounds int, rwl WorryLevelReductionCallback) *Monkeys {
 	nms := make(Monkeys, len(ms))
 
 	nmsMap := map[MonkeyId]*Monkey{}
@@ -101,7 +131,7 @@ func (ms Monkeys) PlayMonkeyInTheMiddleFor(rounds int) *Monkeys {
 			for _, iwl := range m.ItemsWorryLevel {
 				niwl := iwl
 				niwlu := m.WorryLevelUpdateOperation(niwl)
-				pmi, pmiwl := m.MonkeyPassTestOperation(niwlu)
+				pmi, pmiwl := m.MonkeyPassTestOperation(niwlu, rwl)
 				pm := nmsMap[pmi]
 
 				pm.ItemsWorryLevel = append(pm.ItemsWorryLevel, pmiwl)
@@ -150,15 +180,15 @@ func parseWorryLevelUpdateOperation(s string) WorryLevelUpdateOperationCallback 
 	}
 }
 
-func parseMonkeyPassTestOperation(ts, itt, ift string) MonkeyPassTestOperationCallback {
+func parseMonkeyPassTestOperation(ts, itt, ift string) (MonkeyPassTestOperationCallback, int) {
 	tsSplit := strings.Split(ts, " ")
 	tSplitLen := len(tsSplit)
 
 	rightOperandParse, _ := strconv.Atoi(tsSplit[tSplitLen-1])
 	rightOperand := ItemWorryLevel(rightOperandParse)
 
-	return func(wl ItemWorryLevel) (MonkeyId, ItemWorryLevel) {
-		div := wl / 3
+	return func(wl ItemWorryLevel, rwl WorryLevelReductionCallback) (MonkeyId, ItemWorryLevel) {
+		div := rwl(wl)
 		res := div % rightOperand
 
 		if res == 0 {
@@ -166,7 +196,7 @@ func parseMonkeyPassTestOperation(ts, itt, ift string) MonkeyPassTestOperationCa
 		} else {
 			return MonkeyId(ift[len(ift)-1]), div
 		}
-	}
+	}, rightOperandParse
 }
 
 func linesToMonkey(ls []string) *Monkey {
@@ -190,13 +220,14 @@ func linesToMonkey(ls []string) *Monkey {
 
 	worryLevelUpdateOperation := parseWorryLevelUpdateOperation(monkeyInfoMap["Operation"])
 
-	monkeyPassTestOperation := parseMonkeyPassTestOperation(monkeyInfoMap["Test"], monkeyInfoMap["If true"], monkeyInfoMap["If false"])
+	monkeyPassTestOperation, divisionNumber := parseMonkeyPassTestOperation(monkeyInfoMap["Test"], monkeyInfoMap["If true"], monkeyInfoMap["If false"])
 
 	return &Monkey{
 		Id:                        monkeyId,
 		ItemsWorryLevel:           items,
 		WorryLevelUpdateOperation: worryLevelUpdateOperation,
 		MonkeyPassTestOperation:   monkeyPassTestOperation,
+		DivisionNumber:            divisionNumber,
 		PassedItemsCount:          0,
 	}
 }
