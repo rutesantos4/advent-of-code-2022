@@ -8,8 +8,6 @@ import (
 	"os"
 )
 
-var value int = 3
-
 func main() {
 	var inputFilePath = flag.String("inputFilePath", "./inputf.txt", "Input File")
 	flag.Parse()
@@ -27,6 +25,9 @@ func main() {
 
 	log.Printf("> (1st Puzzle) What is the fewest steps required to move from your current position to the location that should get the best signal?")
 
+	possiblePaths := heightmap.FindPossiblePaths()
+
+	println(possiblePaths)
 	// fewestSteps := heightmap.PlayMonkeyInTheMiddleFor(1)
 
 	// log.Printf("The number of fewest steps required to move from your current position to the location is: %d")
@@ -55,10 +56,12 @@ func (h Heightmap) FindPossiblePaths() []Path {
 	paths := []Path{}
 
 	sp := h.findStartPosition()
+	h[sp.l][sp.l] = Height('a')
 
-	findPaths(h, sp, paths)
+	path := []Position{}
+	findPath(h, sp, path)
 
-	return paths
+	return append(paths, path)
 }
 
 func (h Heightmap) findStartPosition() Position {
@@ -77,8 +80,109 @@ func (h Heightmap) findStartPosition() Position {
 	return Position{} //Should never get here
 }
 
-func findPaths(h Heightmap, currentPosition Position, paths []Path) {
-	//Recursive method
+func findPath(h Heightmap, currentPosition Position, path Path) {
+
+	if currentPosition.l == 2 && currentPosition.c == 5 {
+		log.Println("END!")
+	}
+	
+	if h[currentPosition.l][currentPosition.c] == Height(EndPosition) {
+		return
+	}
+
+	if positionVisited(path, currentPosition) {
+		return
+	}
+
+	path = append(path, currentPosition)
+
+	if possible, next := canGoToLeft(h, currentPosition); possible {
+		findPath(h, next, path)
+	}
+
+	if possible, next := canGoToRight(h, currentPosition); possible {
+		findPath(h, next, path)
+	}
+
+	if possible, next := canGoToUp(h, currentPosition); possible {
+		findPath(h, next, path)
+	}
+
+	if possible, next := canGoToDown(h, currentPosition); possible {
+		findPath(h, next, path)
+	}
+}
+
+func canGoToLeft(h Heightmap, currentPosition Position) (bool, Position) {
+	c := currentPosition.c - 1
+	if c < 0 {
+		return false, Position{}
+	}
+
+	next := Position{
+		l: currentPosition.l,
+		c: c,
+	}
+
+	if !h.isValidNextPosition(currentPosition, next) {
+		return false, Position{}
+	}
+
+	return true, next
+}
+
+func canGoToRight(h Heightmap, currentPosition Position) (bool, Position) {
+	c := currentPosition.c + 1
+	if c >= len(h[0]) {
+		return false, Position{}
+	}
+
+	next := Position{
+		l: currentPosition.l,
+		c: c,
+	}
+
+	if !h.isValidNextPosition(currentPosition, next) {
+		return false, Position{}
+	}
+
+	return true, next
+}
+
+func canGoToUp(h Heightmap, currentPosition Position) (bool, Position) {
+	l := currentPosition.l - 1
+	if l < 0 {
+		return false, Position{}
+	}
+
+	next := Position{
+		l: l,
+		c: currentPosition.c,
+	}
+
+	if !h.isValidNextPosition(currentPosition, next) {
+		return false, Position{}
+	}
+
+	return true, next
+}
+
+func canGoToDown(h Heightmap, currentPosition Position) (bool, Position) {
+	l := currentPosition.l + 1
+	if l >= len(h) {
+		return false, Position{}
+	}
+
+	next := Position{
+		l: l,
+		c: currentPosition.c,
+	}
+
+	if !h.isValidNextPosition(currentPosition, next) {
+		return false, Position{}
+	}
+
+	return true, next
 }
 
 func (h Heightmap) isValidNextPosition(currentPosition Position, nextPosition Position) bool {
@@ -86,7 +190,18 @@ func (h Heightmap) isValidNextPosition(currentPosition Position, nextPosition Po
 	currentHeight := h[currentPosition.l][currentPosition.c]
 	nextHeight := h[nextPosition.l][nextPosition.c]
 
-	return Height(math.Abs(float64(nextHeight)-float64(currentHeight))) == Height(HeightDiffToGo)
+	return Height(math.Abs(float64(nextHeight)-float64(currentHeight))) <= Height(HeightDiffToGo)
+}
+
+func positionVisited(p Path, position Position) bool {
+
+	for _, v := range p {
+		if v == position {
+			return true
+		}
+	}
+
+	return false
 }
 
 func (h Heightmap) String() string {
