@@ -85,7 +85,7 @@ func findPath(h Heightmap, currentPosition Position, path Path) {
 	if currentPosition.l == 2 && currentPosition.c == 5 {
 		log.Println("END!")
 	}
-	
+
 	if h[currentPosition.l][currentPosition.c] == Height(EndPosition) {
 		return
 	}
@@ -96,21 +96,33 @@ func findPath(h Heightmap, currentPosition Position, path Path) {
 
 	path = append(path, currentPosition)
 
-	if possible, next := canGoToLeft(h, currentPosition); possible {
+	for _, next := range getPossibleNextPossitions(h, currentPosition) {
 		findPath(h, next, path)
+	}
+
+	// findPath(h, path[len(path)-1], path[:len(path)-1])
+}
+
+func getPossibleNextPossitions(h Heightmap, currentPosition Position) []Position {
+	nextPositions := []Position{}
+
+	if possible, next := canGoToLeft(h, currentPosition); possible {
+		nextPositions = append(nextPositions, next)
 	}
 
 	if possible, next := canGoToRight(h, currentPosition); possible {
-		findPath(h, next, path)
+		nextPositions = append(nextPositions, next)
 	}
 
 	if possible, next := canGoToUp(h, currentPosition); possible {
-		findPath(h, next, path)
+		nextPositions = append(nextPositions, next)
 	}
 
 	if possible, next := canGoToDown(h, currentPosition); possible {
-		findPath(h, next, path)
+		nextPositions = append(nextPositions, next)
 	}
+
+	return nextPositions
 }
 
 func canGoToLeft(h Heightmap, currentPosition Position) (bool, Position) {
