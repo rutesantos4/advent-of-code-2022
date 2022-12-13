@@ -5,6 +5,7 @@ import (
 	"flag"
 	"log"
 	"os"
+	"sort"
 	"strconv"
 	"strings"
 )
@@ -27,6 +28,12 @@ func main() {
 	indicesSumOfOrdered := pairs.IndicesSumOfOrdered()
 
 	log.Printf("The sum of the indices of the pairs of packets are already in the right order is: %d\n", indicesSumOfOrdered)
+
+	log.Printf("> (2nd Puzzle) Organize all of the packets into the correct order. What is the decoder key for the distress signal?")
+
+	decoderKey := pairs.FindDecoderKey()
+
+	log.Printf("The decoder key for the distress signal is: %d\n", decoderKey)
 }
 
 const (
@@ -46,11 +53,17 @@ const (
 	Smaller = -1
 )
 
+const (
+	Divider2 = "[[2]]"
+	Divider6 = "[[6]]"
+)
+
 type Packet struct {
-	Type     int
-	Value    int
-	Children []*Packet
-	Parent   *Packet
+	Type      int
+	Value     int
+	Children  []*Packet
+	Parent    *Packet
+	isDivider bool
 }
 
 type Pair struct {
@@ -71,6 +84,43 @@ func (d DistressSignal) IndicesSumOfOrdered() int {
 	}
 
 	return sum
+}
+
+func (d DistressSignal) FindDecoderKey() int {
+
+	divider2 := lineToPacket(Divider2)
+	divider6 := lineToPacket(Divider6)
+	divider2.isDivider = true
+	divider6.isDivider = true
+	pair := Pair{
+		Left:  divider2,
+		Right: divider6,
+	}
+	d = append(d, pair)
+	packetsOrdered := d.orderPackets()
+
+	count := len(packetsOrdered)
+	mul := 1
+	for i := 1; i < count+1; i++ {
+		if packetsOrdered[i-1].isDivider {
+			mul *= i
+		}
+	}
+
+	return mul
+}
+
+func (d DistressSignal) orderPackets() []Packet {
+	var packets []Packet = []Packet{}
+	for _, v := range d {
+		packets = append(packets, v.Left)
+		packets = append(packets, v.Right)
+	}
+
+	sort.SliceStable(packets, func(i, j int) bool {
+		return comparePairs(packets[i], packets[j]) == Smaller
+	})
+	return packets
 }
 
 func (p *Packet) changeToList() {
