@@ -25,16 +25,27 @@ func main() {
 
 	log.Printf("> (1st Puzzle) Using your scan, simulate the falling sand. How many units of sand come to rest before sand starts flowing into the abyss below?")
 
-	numberSandBeforeAbyss := path.DrawSand()
+	numberSandBeforeAbyss, _ := path.DrawSand()
 
 	log.Printf("The units of sand come to rest before sand starts flowing into the abyss is: %d\n", numberSandBeforeAbyss)
+
+	log.Printf("> (2nd Puzzle) Using your scan, simulate the falling sand until the source of the sand becomes blocked. How many units of sand come to rest?")
+
+	path.DrawFloor()
+	numberSandBeforeAbyssFloor, _ := path.DrawSand()
+
+	log.Printf("The units of sand come to rest until the source of the sand becomes blocked is: %d\n", numberSandBeforeAbyssFloor)
 }
 
 const (
 	Rock      = "#"
 	Air       = "."
-	Sand      = "0"
+	Sand      = "o"
 	SandStart = "+"
+)
+
+const (
+	FloorDiff = 2
 )
 
 type Element string
@@ -58,12 +69,57 @@ func (m Map) String() string {
 	return result
 }
 
-func (m Map) DrawSand() (numberOfSands int) {
-	isEnd := false
+func (m Map) DrawFloor() {
+	height := m.highestPoint() + FloorDiff
+
+	start := Position{
+		l: height,
+		c: 0,
+	}
+	end := Position{
+		l: height,
+		c: len(m[height]) - 1,
+	}
+	m.fillMapWithRocks(start, end)
+}
+
+func (m Map) DrawSand() (numberOfSands int, newMap Map) {
+
+	sizel := len(m)
+	newMap = make(Map, sizel)
+	for l := 0; l < sizel; l++ {
+		sizec := len(m[l])
+		newMap[l] = make([]Element, sizec)
+		copy(newMap[l], m[l])
+	}
+
 	start := Position{
 		l: 0,
 		c: 500,
 	}
+
+	height := m.highestPoint()
+	current := start
+	numberOfSands = 0
+	isEnd := false
+
+	for !isEnd {
+		current = newMap.drawNextSand(start, height)
+		if current.l >= height {
+			isEnd = true
+			continue
+		}
+		numberOfSands++
+		if current == start {
+			// The point of the sand pouring counts as 1 sand pouring, so this validation is after the incrementation
+			isEnd = true
+			continue
+		}
+	}
+	return
+}
+
+func (m Map) highestPoint() int {
 	sizel := len(m)
 	height := 0
 	for l := 0; l < sizel; l++ {
@@ -75,21 +131,10 @@ func (m Map) DrawSand() (numberOfSands int) {
 			}
 		}
 	}
-
-	current := start
-	numberOfSands = 0
-	for !isEnd {
-		current = m.DrawNextSand(start, height)
-		if current.l >= height {
-			isEnd = true
-			continue
-		}
-		numberOfSands++
-	}
-	return
+	return height
 }
 
-func (m Map) DrawNextSand(current Position, maxLines int) Position {
+func (m Map) drawNextSand(current Position, maxLines int) Position {
 	searchPosition := true
 
 	for searchPosition {
@@ -194,7 +239,7 @@ func parseFileToMap(filePath string) (Map, error) {
 		return nil, err
 	}
 
-	size := 650
+	size := 1000
 	var m = make(Map, size)
 
 	for i := 0; i < size; i++ {
