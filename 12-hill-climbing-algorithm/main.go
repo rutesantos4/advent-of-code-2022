@@ -4,7 +4,6 @@ import (
 	"bufio"
 	"flag"
 	"log"
-	"math"
 	"os"
 )
 
@@ -14,215 +13,182 @@ func main() {
 
 	log.Printf("inputFilePath %v\n", *inputFilePath)
 
-	heightmap, err := parseFileToHeightmap(*inputFilePath)
+	heightmap, err := parseFileToHeightPositionMap(*inputFilePath)
 
 	if err != nil {
 		log.Fatalf("Error Parsing file %v: %v", *inputFilePath, err)
 		return
 	}
 
-	log.Println(heightmap)
-
 	log.Printf("> (1st Puzzle) What is the fewest steps required to move from your current position to the location that should get the best signal?")
 
-	possiblePaths := heightmap.FindPossiblePaths()
+	shp := heightmap.StartPosition()
+	ehp := heightmap.EndPosition()
 
-	println(possiblePaths)
-	// fewestSteps := heightmap.PlayMonkeyInTheMiddleFor(1)
+	shortestPath := heightmap.FindShortestPath(shp, ehp)
 
-	// log.Printf("The number of fewest steps required to move from your current position to the location is: %d")
+	log.Printf("The number of fewest steps required to move from your current position to the location is: %d", len(shortestPath)-1)
 
 }
 
 const (
-	HeightDiffToGo = 1
-)
-const (
-	StartPosition rune = 'S'
-	EndPosition   rune = 'E'
+	StartPositionHeight = Height('S')
+	EndPositionHeight   = Height('E')
 )
 
-type Path []Position
-
-type Position struct {
-	l int
-	c int
-}
 type Height byte
 
-type Heightmap [][]Height
-
-func (h Heightmap) FindPossiblePaths() []Path {
-	paths := []Path{}
-
-	sp := h.findStartPosition()
-	h[sp.l][sp.l] = Height('a')
-
-	path := []Position{}
-	findPath(h, sp, path)
-
-	return append(paths, path)
+type HeightPosition struct {
+	X      int
+	Y      int
+	Height Height
 }
 
-func (h Heightmap) findStartPosition() Position {
+type Path []HeightPosition
 
-	for l, heights := range h {
-		for c, height := range heights {
-			if height == Height(byte(StartPosition)) {
-				return Position{
-					l: l,
-					c: c,
+type HeightPositionMap [][]HeightPosition
+
+func (hm HeightPositionMap) StartPosition() HeightPosition {
+	return hm.positionByHeight(StartPositionHeight)
+}
+
+func (hm HeightPositionMap) EndPosition() HeightPosition {
+	return hm.positionByHeight(EndPositionHeight)
+}
+
+func (hm HeightPositionMap) positionByHeight(h Height) HeightPosition {
+	var hp *HeightPosition
+
+	for _, l := range hm {
+		if hp == nil {
+			for _, php := range l {
+				if php.Height == h {
+					hp = &php
+
+					break
 				}
 			}
 		}
 	}
 
-	return Position{} //Should never get here
+	return *hp
 }
 
-func findPath(h Heightmap, currentPosition Position, path Path) {
+func (hm HeightPositionMap) FindShortestPath(shp, ehp HeightPosition) Path {
+	possiblePaths := hm.findAllPaths(shp, ehp)
 
-	if currentPosition.l == 2 && currentPosition.c == 5 {
-		log.Println("END!")
-	}
+	shortestPath := possiblePaths[0]
 
-	if h[currentPosition.l][currentPosition.c] == Height(EndPosition) {
-		return
-	}
+	lsp := len(shortestPath)
 
-	if positionVisited(path, currentPosition) {
-		return
-	}
-
-	path = append(path, currentPosition)
-
-	for _, next := range getPossibleNextPossitions(h, currentPosition) {
-		findPath(h, next, path)
-	}
-
-	// findPath(h, path[len(path)-1], path[:len(path)-1])
-}
-
-func getPossibleNextPossitions(h Heightmap, currentPosition Position) []Position {
-	nextPositions := []Position{}
-
-	if possible, next := canGoToLeft(h, currentPosition); possible {
-		nextPositions = append(nextPositions, next)
-	}
-
-	if possible, next := canGoToRight(h, currentPosition); possible {
-		nextPositions = append(nextPositions, next)
-	}
-
-	if possible, next := canGoToUp(h, currentPosition); possible {
-		nextPositions = append(nextPositions, next)
-	}
-
-	if possible, next := canGoToDown(h, currentPosition); possible {
-		nextPositions = append(nextPositions, next)
-	}
-
-	return nextPositions
-}
-
-func canGoToLeft(h Heightmap, currentPosition Position) (bool, Position) {
-	c := currentPosition.c - 1
-	if c < 0 {
-		return false, Position{}
-	}
-
-	next := Position{
-		l: currentPosition.l,
-		c: c,
-	}
-
-	if !h.isValidNextPosition(currentPosition, next) {
-		return false, Position{}
-	}
-
-	return true, next
-}
-
-func canGoToRight(h Heightmap, currentPosition Position) (bool, Position) {
-	c := currentPosition.c + 1
-	if c >= len(h[0]) {
-		return false, Position{}
-	}
-
-	next := Position{
-		l: currentPosition.l,
-		c: c,
-	}
-
-	if !h.isValidNextPosition(currentPosition, next) {
-		return false, Position{}
-	}
-
-	return true, next
-}
-
-func canGoToUp(h Heightmap, currentPosition Position) (bool, Position) {
-	l := currentPosition.l - 1
-	if l < 0 {
-		return false, Position{}
-	}
-
-	next := Position{
-		l: l,
-		c: currentPosition.c,
-	}
-
-	if !h.isValidNextPosition(currentPosition, next) {
-		return false, Position{}
-	}
-
-	return true, next
-}
-
-func canGoToDown(h Heightmap, currentPosition Position) (bool, Position) {
-	l := currentPosition.l + 1
-	if l >= len(h) {
-		return false, Position{}
-	}
-
-	next := Position{
-		l: l,
-		c: currentPosition.c,
-	}
-
-	if !h.isValidNextPosition(currentPosition, next) {
-		return false, Position{}
-	}
-
-	return true, next
-}
-
-func (h Heightmap) isValidNextPosition(currentPosition Position, nextPosition Position) bool {
-
-	currentHeight := h[currentPosition.l][currentPosition.c]
-	nextHeight := h[nextPosition.l][nextPosition.c]
-
-	return Height(math.Abs(float64(nextHeight)-float64(currentHeight))) <= Height(HeightDiffToGo)
-}
-
-func positionVisited(p Path, position Position) bool {
-
-	for _, v := range p {
-		if v == position {
-			return true
+	for _, p := range possiblePaths {
+		if len(p) < lsp {
+			shortestPath = p
 		}
 	}
 
-	return false
+	return shortestPath
 }
 
-func (h Heightmap) String() string {
-	lines := len(h)
-	columns := len(h[0])
+func (hm HeightPositionMap) findAllPaths(shp, ehp HeightPosition) []Path {
+	possiblePaths := []Path{}
+	possiblePathsQueue := []Path{}
+
+	possiblePathsQueue = append(possiblePathsQueue, Path{shp})
+
+	for {
+		ppqLen := len(possiblePathsQueue)
+
+		foundAnyMovablePosition := false
+
+		for i := 0; i < ppqLen; i++ {
+			np := possiblePathsQueue[i]
+
+			chp := np[len(np)-1]
+			mp := hm.MovablePositions(chp, np)
+
+			if len(mp) > 0 {
+				foundAnyMovablePosition = true
+
+				for _, hmp := range mp[1:] {
+					npCpy := make(Path, len(np))
+					copy(npCpy, np)
+					npCpy = append(npCpy, hmp)
+
+					possiblePathsQueue = append(possiblePathsQueue, npCpy)
+				}
+
+				np = append(np, mp[0])
+				possiblePathsQueue[i] = np
+
+			} else if chp != ehp {
+				possiblePathsQueue = append(possiblePathsQueue[:i], possiblePathsQueue[i+1:]...)
+
+				ppqLen--
+				//i--
+			}
+		}
+
+		if !foundAnyMovablePosition {
+			break
+		}
+	}
+
+	for _, p := range possiblePathsQueue {
+		if p[len(p)-1] == ehp {
+			possiblePaths = append(possiblePaths, p)
+		}
+	}
+
+	return possiblePaths
+}
+
+func (hm HeightPositionMap) MovablePositions(hp HeightPosition, exhp []HeightPosition) []HeightPosition {
+	positions := []HeightPosition{}
+
+	minX := 0
+	minY := 0
+
+	maxX := len(hm) - 1
+	maxY := len(hm[0]) - 1
+
+	x := hp.X
+	y := hp.Y
+
+	if x > minX {
+		positions = append(positions, hm[x-1][y])
+	}
+
+	if x < maxX {
+		positions = append(positions, hm[x+1][y])
+	}
+
+	if y > minY {
+		positions = append(positions, hm[x][y-1])
+	}
+
+	if y < maxY {
+		positions = append(positions, hm[x][y+1])
+	}
+
+	movablePositions := []HeightPosition{}
+
+	for _, hpp := range positions {
+		if doesNotRequireGearChange(hp, hpp) && doesNotExist(hpp, exhp) {
+			movablePositions = append(movablePositions, hpp)
+		}
+	}
+
+	return movablePositions
+}
+
+func (hm HeightPositionMap) String() string {
+	lines := len(hm)
+	columns := len(hm[0])
 	result := "\n"
 	for l := 0; l < lines; l++ {
 		for c := 0; c < columns; c++ {
-			result += string(h[l][c])
+			result += string(hm[l][c].Height)
 		}
 		result += "\n"
 	}
@@ -230,18 +196,38 @@ func (h Heightmap) String() string {
 	return result
 }
 
-func parseLineToHeighs(line string) []Height {
+func doesNotRequireGearChange(hpSrc, hpDest HeightPosition) bool {
+	diff := int(hpDest.Height) - int(hpSrc.Height)
+
+	return diff <= 1 || hpSrc.Height == StartPositionHeight || hpDest.Height == EndPositionHeight
+}
+
+func doesNotExist(hp HeightPosition, exhp []HeightPosition) bool {
+	for _, hpp := range exhp {
+		if hp.X == hpp.X && hp.Y == hpp.Y {
+			return false
+		}
+	}
+
+	return true
+}
+
+func parseLineToHeightPositions(line string, l int) []HeightPosition {
 	count := len(line)
-	heights := make([]Height, count)
+	heights := make([]HeightPosition, count)
 
 	for i := 0; i < count; i++ {
-		heights[i] = Height(line[i])
+		heights[i] = HeightPosition{
+			X:      l,
+			Y:      i,
+			Height: Height(line[i]),
+		}
 	}
 
 	return heights
 }
 
-func parseFileToHeightmap(filePath string) (Heightmap, error) {
+func parseFileToHeightPositionMap(filePath string) (HeightPositionMap, error) {
 	lines, err := getFileLines(filePath)
 
 	if err != nil {
@@ -249,10 +235,10 @@ func parseFileToHeightmap(filePath string) (Heightmap, error) {
 	}
 
 	l := len(lines)
-	heightmap := make(Heightmap, l)
+	heightmap := make(HeightPositionMap, l)
 
 	for i, line := range lines {
-		heightmap[i] = parseLineToHeighs(line)
+		heightmap[i] = parseLineToHeightPositions(line, i)
 	}
 
 	return heightmap, nil
