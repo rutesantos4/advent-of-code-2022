@@ -29,11 +29,21 @@ func main() {
 
 	log.Printf("The number of fewest steps required to move from your current position to the location is: %d", len(shortestPath)-1)
 
+	log.Printf("> (2nd Puzzle) What is the fewest steps required to move starting from any square with elevation a to the location that should get the best signal?")
+
+	lhps := heightmap.PositionsByHeight(LowestPositionHeight)
+
+	shortestPath = heightmap.FindShortestPath2(lhps, ehp)
+
+	log.Printf("The number of fewest steps required to move from your current position to the location is: %d", len(shortestPath)-1)
+
 }
 
 const (
-	StartPositionHeight = Height('S')
-	EndPositionHeight   = Height('E')
+	StartPositionHeight   = Height('S')
+	EndPositionHeight     = Height('E')
+	LowestPositionHeight  = Height('a')
+	HighestPositionHeight = Height('z')
 )
 
 type Height byte
@@ -74,8 +84,44 @@ func (hm HeightPositionMap) positionByHeight(h Height) HeightPosition {
 	return *hp
 }
 
+func (hm HeightPositionMap) PositionsByHeight(h Height) []HeightPosition {
+
+	hp := []HeightPosition{}
+
+	for _, l := range hm {
+		for _, php := range l {
+			if php.Height == h || (php.Height == StartPositionHeight && h == LowestPositionHeight) {
+				hp = append(hp, php)
+			}
+		}
+
+	}
+
+	return hp
+}
+
 func (hm HeightPositionMap) FindShortestPath(shp, ehp HeightPosition) Path {
 	possiblePaths := hm.findAllPaths(shp, ehp)
+
+	shortestPath := possiblePaths[0]
+
+	lsp := len(shortestPath)
+
+	for _, p := range possiblePaths {
+		if len(p) < lsp {
+			shortestPath = p
+		}
+	}
+
+	return shortestPath
+}
+
+func (hm HeightPositionMap) FindShortestPath2(hps []HeightPosition, ehp HeightPosition) Path {
+	possiblePaths := []Path{}
+
+	for _, hp := range hps {
+		possiblePaths = append(possiblePaths, hm.FindShortestPath(hp, ehp))
+	}
 
 	shortestPath := possiblePaths[0]
 
@@ -125,7 +171,6 @@ func (hm HeightPositionMap) findAllPaths(shp, ehp HeightPosition) []Path {
 				possiblePathsQueue = append(possiblePathsQueue[:i], possiblePathsQueue[i+1:]...)
 
 				ppqLen--
-				//i--
 			}
 		}
 
@@ -197,9 +242,19 @@ func (hm HeightPositionMap) String() string {
 }
 
 func doesNotRequireGearChange(hpSrc, hpDest HeightPosition) bool {
-	diff := int(hpDest.Height) - int(hpSrc.Height)
 
-	return diff <= 1 || hpSrc.Height == StartPositionHeight || hpDest.Height == EndPositionHeight
+	hpSrcHeight := hpSrc.Height
+	hpDestHeight := hpDest.Height
+
+	if hpDestHeight == EndPositionHeight {
+		hpDestHeight = HighestPositionHeight
+	} else if hpSrcHeight == StartPositionHeight {
+		hpSrcHeight = LowestPositionHeight
+	}
+
+	diff := int(hpDestHeight) - int(hpSrcHeight)
+
+	return diff <= 1
 }
 
 func doesNotExist(hp HeightPosition, exhp []HeightPosition) bool {
