@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"flag"
 	"log"
+	"math"
 	"os"
 	"regexp"
 	"strconv"
@@ -22,10 +23,16 @@ func main() {
 		return
 	}
 
-	log.Printf("> (1st Puzzle) Using your scan, simulate the falling sand. How many units of sand come to rest before sand starts flowing into the abyss below?")
+	log.Printf("> (1st Puzzle) Consult the report from the sensors you just deployed. In the row where y=2000000, how many positions cannot contain a beacon?")
 
-	log.Printf("%v\n", zoneMap)
+	numberPositionsCannotContainBeacon := zoneMap.ComputeNumberPositionsCannotContainBeacon(RowPuzzle1)
+
+	log.Printf("The number of positions that cannot contain a beacon is: %v", numberPositionsCannotContainBeacon)
 }
+
+const (
+	RowPuzzle1 = 2000000
+)
 
 const (
 	SensorLabel = 'S'
@@ -33,7 +40,7 @@ const (
 )
 
 const (
-	positionsParseRegex = `(x=re(.+), y=re(.+).*)`
+	positionsParseRegex = `(x=(-?\d+), y=(-?\d+))`
 )
 
 type Position struct {
@@ -52,20 +59,95 @@ type ZoneMap struct {
 	Beacons Beacons
 }
 
+func (z ZoneMap) ComputeNumberPositionsCannotContainBeacon(row int) int {
+	p := []int{}
+
+	for s, sensor := range z.Sensors {
+		beacon := z.Beacons[s]
+
+		diffX := math.Abs(float64(sensor.X) - float64(beacon.X))
+		diffY := math.Abs(float64(sensor.Y) - float64(beacon.Y))
+		dist := int(diffX + diffY)
+
+		for distY := 0; distY <= dist; distY++ {
+
+			y := sensor.Y + distY
+			p = sensor.addPositionsCannotContainBeacon(y, p, (dist - distY), row)
+
+			y = sensor.Y - distY
+			p = sensor.addPositionsCannotContainBeacon(y, p, (dist - distY), row)
+		}
+
+	}
+
+	//remove duplicates from p
+	p = removeDuplicateInt(p)
+
+	for _, beacon := range z.Beacons {
+		if beacon.Y == row {
+			// beacon is in the same row
+			p = removeElementInt(p, beacon.X)
+		}
+	}
+
+	return len(p)
+}
+
+func (s Sensor) addPositionsCannotContainBeacon(y int, p []int, dist int, row int) []int {
+	if y == row {
+		p = append(p, s.X)
+
+		xRight := s.X + dist
+
+		for i := s.X; i <= xRight; i++ {
+			p = append(p, i)
+		}
+
+		xLeft := s.X - dist
+
+		for i := xLeft; i <= s.X; i++ {
+			p = append(p, i)
+		}
+	}
+	return p
+}
+
+func removeDuplicateInt(intSlice []int) []int {
+	allKeys := make(map[int]bool)
+	list := []int{}
+	for _, item := range intSlice {
+		if _, value := allKeys[item]; !value {
+			allKeys[item] = true
+			list = append(list, item)
+		}
+	}
+	return list
+}
+
+func removeElementInt(intSlice []int, el int) []int {
+
+	for i, item := range intSlice {
+
+		if item == el {
+			return append(intSlice[:i], intSlice[i+1:]...)
+		}
+	}
+
+	return intSlice
+}
+
 func lineToSensorAndBeacon(line string) (Sensor, Beacon) {
 	positionsRegex := regexp.MustCompile(positionsParseRegex)
 
-	xPositionString := positionsRegex.FindAllString(line, 1)
-	yPositionString := positionsRegex.FindAllString(line, 2)
+	positionString := positionsRegex.FindAllStringSubmatch(line, 2)
+	sPositionString := positionString[0][2:]
+	bPositionString := positionString[1][2:]
 
-	log.Printf("%v\n", xPositionString)
-	log.Printf("%v\n", yPositionString)
+	sensorPositionXParse, _ := strconv.Atoi(sPositionString[0])
+	sensorPositionYParse, _ := strconv.Atoi(sPositionString[1])
 
-	sensorPositionXParse, _ := strconv.Atoi(xPositionString[0])
-	sensorPositionYParse, _ := strconv.Atoi(yPositionString[0])
-
-	beaconPositionXParse, _ := strconv.Atoi(xPositionString[1])
-	beaconPositionYParse, _ := strconv.Atoi(yPositionString[1])
+	beaconPositionXParse, _ := strconv.Atoi(bPositionString[0])
+	beaconPositionYParse, _ := strconv.Atoi(bPositionString[1])
 
 	return Sensor{
 			X: sensorPositionXParse,
@@ -93,8 +175,8 @@ func parseFileToZoneMap(filePath string) (*ZoneMap, error) {
 
 		sensor, beacon := lineToSensorAndBeacon(l)
 
-		sensors = append(sensors, sensor)
-		beacons = append(beacons, beacon)
+		sensors[i] = sensor
+		beacons[i] = beacon
 	}
 
 	return &ZoneMap{
