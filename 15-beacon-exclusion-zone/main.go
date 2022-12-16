@@ -25,7 +25,7 @@ func main() {
 
 	log.Printf("> (1st Puzzle) Consult the report from the sensors you just deployed. In the row where y=2000000, how many positions cannot contain a beacon?")
 
-	numberPositionsCannotContainBeacon := zoneMap.ComputeNumberPositionsCannotContainBeacon(10)
+	numberPositionsCannotContainBeacon := zoneMap.ComputeNumberPositionsCannotContainBeacon(RowPuzzle1)
 
 	log.Printf("The number of positions that cannot contain a beacon is: %v", numberPositionsCannotContainBeacon)
 
@@ -87,9 +87,7 @@ func (z ZoneMap) findPossiblePositionForDistressBeacon() Position {
 				listCannotContain[i] = append(listCannotContain[i], beacon.X)
 			}
 		}
-
-		listCannotContain[i] = removeBigger(listCannotContain[i], max)
-		listCannotContain[i] = removeSmaller(listCannotContain[i], min)
+		listCannotContain[i] = removeOutOfBounds(listCannotContain[i], min, max)
 
 		if len(listCannotContain[i]) <= max-min {
 
@@ -108,36 +106,6 @@ func (z ZoneMap) findPossiblePositionForDistressBeacon() Position {
 }
 
 func (z ZoneMap) ComputeNumberPositionsCannotContainBeacon(row int) int {
-	p := []int{}
-
-	for s, sensor := range z.Sensors {
-		beacon := z.Beacons[s]
-
-		diffX := math.Abs(float64(sensor.X) - float64(beacon.X))
-		diffY := math.Abs(float64(sensor.Y) - float64(beacon.Y))
-		dist := int(diffX + diffY)
-
-		for distY := 0; distY <= dist; distY++ {
-
-			y := sensor.Y + distY
-			p = sensor.addPositionsCannotContainBeacon(y, p, (dist - distY), row)
-
-			y = sensor.Y - distY
-			p = sensor.addPositionsCannotContainBeacon(y, p, (dist - distY), row)
-		}
-
-	}
-
-	//remove duplicates from p
-	p = removeDuplicateInt(p)
-
-	for _, beacon := range z.Beacons {
-		if beacon.Y == row {
-			// beacon is in the same row
-			p = removeElementInt(p, beacon.X)
-		}
-	}
-
 	return len(z.positionsCannotContainBeacon(row))
 }
 
@@ -194,68 +162,6 @@ func (s Sensor) addPositionsCannotContainBeacon(y int, p []int, dist int, row in
 	return p
 }
 
-func (z ZoneMap) maxPosition() Position {
-	p := Position{
-		X: z.Beacons[0].X,
-		Y: z.Beacons[0].Y,
-	}
-
-	for _, b := range z.Beacons {
-
-		if b.X > p.X {
-			p.X = b.X
-		}
-
-		if b.Y > p.Y {
-			p.Y = b.Y
-		}
-	}
-
-	for _, s := range z.Sensors {
-
-		if s.X > p.X {
-			p.X = s.X
-		}
-
-		if s.Y > p.Y {
-			p.Y = s.Y
-		}
-	}
-
-	return p
-}
-
-func (z ZoneMap) minPosition() Position {
-	p := Position{
-		X: z.Beacons[0].X,
-		Y: z.Beacons[0].Y,
-	}
-
-	for _, b := range z.Beacons {
-
-		if b.X < p.X {
-			p.X = b.X
-		}
-
-		if b.Y < p.Y {
-			p.Y = b.Y
-		}
-	}
-
-	for _, s := range z.Sensors {
-
-		if s.X < p.X {
-			p.X = s.X
-		}
-
-		if s.Y < p.Y {
-			p.Y = s.Y
-		}
-	}
-
-	return p
-}
-
 func removeDuplicateInt(intSlice []int) []int {
 	allKeys := make(map[int]bool)
 	list := []int{}
@@ -278,19 +184,6 @@ func removeElementInt(intSlice []int, el int) []int {
 	}
 
 	return intSlice
-}
-
-func findSmaller(intSlice []int) int {
-	min := intSlice[0]
-
-	for _, b := range intSlice {
-
-		if b < min {
-			min = b
-		}
-	}
-
-	return min
 }
 
 func findValuesNotPresentBetween(intSlice []int, min int, max int) []int {
@@ -316,22 +209,13 @@ func contains(intSlice []int, el int) bool {
 	return false
 }
 
-func removeSmaller(intSlice []int, min int) []int {
+func removeOutOfBounds(intSlice []int, min int, max int) []int {
 	for i := 0; i < len(intSlice); i++ {
 
 		if intSlice[i] < min {
 			intSlice = append(intSlice[:i], intSlice[i+1:]...)
 			i--
-		}
-	}
-
-	return intSlice
-}
-
-func removeBigger(intSlice []int, max int) []int {
-	for i := 0; i < len(intSlice); i++ {
-
-		if intSlice[i] > max {
+		} else if intSlice[i] > max {
 			intSlice = append(intSlice[:i], intSlice[i+1:]...)
 			i--
 		}
