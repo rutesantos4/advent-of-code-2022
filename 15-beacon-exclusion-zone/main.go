@@ -3,12 +3,13 @@ package main
 import (
 	"bufio"
 	"flag"
+	"fmt"
 	"log"
 	"math"
 	"os"
 	"regexp"
 	"strconv"
-	"sync"
+	"time"
 )
 
 func main() {
@@ -77,41 +78,122 @@ func (z ZoneMap) ComputeTuningFrequency() int {
 func (z ZoneMap) findPossiblePositionForDistressBeacon() Position {
 	max := 4000000 + 1
 	min := 0
-	listCannotContain := make([][]int, max+1)
-	p := Position{}
+	pempty := Position{}
 
-	var wg sync.WaitGroup
-	wg.Add(max)
-	for i := min; i < max; i++ {
-		go func(i int) {
-			println(i)
-			listCannotContain[i] = z.positionsCannotContainBeacon(i)
+	start := time.Now()
+	defer func() {
+		fmt.Println("Part2:", time.Since(start))
+	}()
 
-			for _, beacon := range z.Beacons {
-				if beacon.Y == i {
-					// beacon is in the same row
-					listCannotContain[i] = append(listCannotContain[i], beacon.X)
-				}
-			}
-			// listCannotContain[i] = removeOutOfBounds(listCannotContain[i], min, max)
+	// c1 := make(chan Position)
+	// c2 := make(chan Position)
+	// c3 := make(chan Position)
+	// c4 := make(chan Position)
+	// c5 := make(chan Position)
+	// c6 := make(chan Position)
+	// c7 := make(chan Position)
+	// c8 := make(chan Position)
+	// c9 := make(chan Position)
+	// c10 := make(chan Position)
+	// for i := min; i < max/10; i++ {
+	// 	go findPositionPerLine(z, i, min, max, c1)
 
-			// if len(listCannotContain[i]) <= max-min {
+	// 	a := i + (max / 10)
+	// 	go findPositionPerLine(z, a, min, max, c2)
 
-			x := findValuesNotPresentBetween(listCannotContain[i], min, max)
+	// 	b := a + (max / 10)
+	// 	go findPositionPerLine(z, b, min, max, c3)
 
-			if len(x) == 1 {
-				println("here")
-				log.Printf("%v %v", x, i)
-				p.X = x[0]
-				p.Y = i
-			}
-			wg.Done()
-			// }
-		}(i)
+	// 	c := b + (max / 10)
+	// 	go findPositionPerLine(z, c, min, max, c4)
+
+	// 	d := c + (max / 10)
+	// 	go findPositionPerLine(z, d, min, max, c5)
+
+	// 	e := d + (max / 10)
+	// 	go findPositionPerLine(z, e, min, max, c6)
+
+	// 	f := e + (max / 10)
+	// 	go findPositionPerLine(z, f, min, max, c7)
+
+	// 	g := f + (max / 10)
+	// 	go findPositionPerLine(z, g, min, max, c8)
+
+	// 	h := g + (max / 10)
+	// 	go findPositionPerLine(z, h, min, max, c9)
+
+	// 	j := h + (max / 10)
+	// 	go findPositionPerLine(z, j, min, max, c10)
+
+	// }
+
+	// for p := range c1 {
+	// 	if p != pempty {
+	// 		return p
+	// 	}
+	// }
+
+	// for p := range c2 {
+	// 	if p != pempty {
+	// 		return p
+	// 	}
+	// }
+
+	// for p := range c3 {
+	// 	if p != pempty {
+	// 		return p
+	// 	}
+	// }
+
+	// for p := range c4 {
+	// 	if p != pempty {
+	// 		return p
+	// 	}
+	// }
+
+	// for p := range c5 {
+	// 	if p != pempty {
+	// 		return p
+	// 	}
+	// }
+
+	ch := make(chan Position)
+	for row := min; row <= max; row++ {
+		go findPositionPerLine(z, row, min, max, ch)
 	}
-	wg.Wait()
 
-	return p
+	pempty = <-ch
+
+	return pempty
+}
+
+func findPositionPerLine(z ZoneMap, i int, min int, max int, c chan Position) {
+	println(i)
+
+	p := Position{}
+	listCannotContain := z.positionsCannotContainBeacon(i)
+
+	for _, beacon := range z.Beacons {
+		if beacon.Y == i {
+			// beacon is in the same row
+			listCannotContain = append(listCannotContain, beacon.X)
+		}
+	}
+
+	listCannotContain = removeOutOfBounds(listCannotContain, min, max)
+
+	if len(listCannotContain) <= max-min {
+
+		x := findValuesNotPresentBetween(listCannotContain, min, max)
+
+		if len(x) == 1 {
+			println("here")
+			log.Printf("%v %v", x, i)
+			p.X = x[0]
+			p.Y = i
+			c <- p
+		}
+	}
 }
 
 func (z ZoneMap) ComputeNumberPositionsCannotContainBeacon(row int) int {
