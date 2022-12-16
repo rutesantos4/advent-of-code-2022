@@ -8,6 +8,7 @@ import (
 	"os"
 	"regexp"
 	"strconv"
+	"sync"
 )
 
 func main() {
@@ -37,6 +38,7 @@ func main() {
 }
 
 const (
+	// RowPuzzle1 = 10
 	RowPuzzle1 = 2000000
 )
 
@@ -73,23 +75,27 @@ func (z ZoneMap) ComputeTuningFrequency() int {
 }
 
 func (z ZoneMap) findPossiblePositionForDistressBeacon() Position {
-	max := 4000000
+	max := 4000000 + 1
 	min := 0
 	listCannotContain := make([][]int, max+1)
 	p := Position{}
 
-	for i := min; i < max+1; i++ {
-		listCannotContain[i] = z.positionsCannotContainBeacon(i)
+	var wg sync.WaitGroup
+	wg.Add(max)
+	for i := min; i < max; i++ {
+		go func(i int) {
+			println(i)
+			listCannotContain[i] = z.positionsCannotContainBeacon(i)
 
-		for _, beacon := range z.Beacons {
-			if beacon.Y == i {
-				// beacon is in the same row
-				listCannotContain[i] = append(listCannotContain[i], beacon.X)
+			for _, beacon := range z.Beacons {
+				if beacon.Y == i {
+					// beacon is in the same row
+					listCannotContain[i] = append(listCannotContain[i], beacon.X)
+				}
 			}
-		}
-		listCannotContain[i] = removeOutOfBounds(listCannotContain[i], min, max)
+			// listCannotContain[i] = removeOutOfBounds(listCannotContain[i], min, max)
 
-		if len(listCannotContain[i]) <= max-min {
+			// if len(listCannotContain[i]) <= max-min {
 
 			x := findValuesNotPresentBetween(listCannotContain[i], min, max)
 
@@ -99,8 +105,11 @@ func (z ZoneMap) findPossiblePositionForDistressBeacon() Position {
 				p.X = x[0]
 				p.Y = i
 			}
-		}
+			wg.Done()
+			// }
+		}(i)
 	}
+	wg.Wait()
 
 	return p
 }
@@ -189,7 +198,7 @@ func removeElementInt(intSlice []int, el int) []int {
 func findValuesNotPresentBetween(intSlice []int, min int, max int) []int {
 	result := []int{}
 
-	for i := min; i < max+1; i++ {
+	for i := min; i < max; i++ {
 
 		if !contains(intSlice, i) {
 			result = append(result, i)
