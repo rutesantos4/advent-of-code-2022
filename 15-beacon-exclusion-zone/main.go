@@ -3,13 +3,12 @@ package main
 import (
 	"bufio"
 	"flag"
-	"fmt"
 	"log"
 	"math"
 	"os"
 	"regexp"
+	"sort"
 	"strconv"
-	"time"
 )
 
 func main() {
@@ -39,7 +38,6 @@ func main() {
 }
 
 const (
-	// RowPuzzle1 = 10
 	RowPuzzle1 = 2000000
 )
 
@@ -68,140 +66,59 @@ type ZoneMap struct {
 	Beacons Beacons
 }
 
+type Range struct {
+	min int
+	max int
+}
+
+func (r *Range) Len() int {
+	return r.max - r.min
+}
+
+type Ranges []Range
+
+// Implementing these because of sort function
+func (r Ranges) Len() int           { return len(r) }
+func (r Ranges) Swap(i, j int)      { r[i], r[j] = r[j], r[i] }
+func (r Ranges) Less(i, j int) bool { return r[i].min < r[j].min }
+
 func (z ZoneMap) ComputeTuningFrequency() int {
 	p := z.findPossiblePositionForDistressBeacon()
-	println(p.X)
-	println(p.Y)
 	return p.X*4000000 + p.Y
 }
 
 func (z ZoneMap) findPossiblePositionForDistressBeacon() Position {
 	max := 4000000 + 1
 	min := 0
-	pempty := Position{}
-
-	start := time.Now()
-	defer func() {
-		fmt.Println("Part2:", time.Since(start))
-	}()
-
-	// c1 := make(chan Position)
-	// c2 := make(chan Position)
-	// c3 := make(chan Position)
-	// c4 := make(chan Position)
-	// c5 := make(chan Position)
-	// c6 := make(chan Position)
-	// c7 := make(chan Position)
-	// c8 := make(chan Position)
-	// c9 := make(chan Position)
-	// c10 := make(chan Position)
-	// for i := min; i < max/10; i++ {
-	// 	go findPositionPerLine(z, i, min, max, c1)
-
-	// 	a := i + (max / 10)
-	// 	go findPositionPerLine(z, a, min, max, c2)
-
-	// 	b := a + (max / 10)
-	// 	go findPositionPerLine(z, b, min, max, c3)
-
-	// 	c := b + (max / 10)
-	// 	go findPositionPerLine(z, c, min, max, c4)
-
-	// 	d := c + (max / 10)
-	// 	go findPositionPerLine(z, d, min, max, c5)
-
-	// 	e := d + (max / 10)
-	// 	go findPositionPerLine(z, e, min, max, c6)
-
-	// 	f := e + (max / 10)
-	// 	go findPositionPerLine(z, f, min, max, c7)
-
-	// 	g := f + (max / 10)
-	// 	go findPositionPerLine(z, g, min, max, c8)
-
-	// 	h := g + (max / 10)
-	// 	go findPositionPerLine(z, h, min, max, c9)
-
-	// 	j := h + (max / 10)
-	// 	go findPositionPerLine(z, j, min, max, c10)
-
-	// }
-
-	// for p := range c1 {
-	// 	if p != pempty {
-	// 		return p
-	// 	}
-	// }
-
-	// for p := range c2 {
-	// 	if p != pempty {
-	// 		return p
-	// 	}
-	// }
-
-	// for p := range c3 {
-	// 	if p != pempty {
-	// 		return p
-	// 	}
-	// }
-
-	// for p := range c4 {
-	// 	if p != pempty {
-	// 		return p
-	// 	}
-	// }
-
-	// for p := range c5 {
-	// 	if p != pempty {
-	// 		return p
-	// 	}
-	// }
-
-	ch := make(chan Position)
-	for row := min; row <= max; row++ {
-		go findPositionPerLine(z, row, min, max, ch)
-	}
-
-	pempty = <-ch
-
-	return pempty
-}
-
-func findPositionPerLine(z ZoneMap, i int, min int, max int, c chan Position) {
-	println(i)
 
 	p := Position{}
-	listCannotContain := z.positionsCannotContainBeacon(i)
+	for row := min; row <= max; row++ {
+		listCannotContain := z.positionsCannotContainBeacon(row)
 
-	for _, beacon := range z.Beacons {
-		if beacon.Y == i {
-			// beacon is in the same row
-			listCannotContain = append(listCannotContain, beacon.X)
+		if len(listCannotContain) > 1 {
+			interval := listCannotContain[1]
+			p.X = interval.min - 1
+			p.Y = row
+			break
 		}
 	}
 
-	listCannotContain = removeOutOfBounds(listCannotContain, min, max)
-
-	if len(listCannotContain) <= max-min {
-
-		x := findValuesNotPresentBetween(listCannotContain, min, max)
-
-		if len(x) == 1 {
-			println("here")
-			log.Printf("%v %v", x, i)
-			p.X = x[0]
-			p.Y = i
-			c <- p
-		}
-	}
+	return p
 }
 
 func (z ZoneMap) ComputeNumberPositionsCannotContainBeacon(row int) int {
-	return len(z.positionsCannotContainBeacon(row))
+	ranges := z.positionsCannotContainBeacon(row)
+	sum := 0
+
+	for _, interval := range ranges {
+		sum += interval.Len()
+	}
+
+	return sum
 }
 
-func (z ZoneMap) positionsCannotContainBeacon(row int) []int {
-	p := []int{}
+func (z ZoneMap) positionsCannotContainBeacon(row int) Ranges {
+	list := Ranges{}
 
 	for s, sensor := range z.Sensors {
 		beacon := z.Beacons[s]
@@ -210,109 +127,56 @@ func (z ZoneMap) positionsCannotContainBeacon(row int) []int {
 		diffY := math.Abs(float64(sensor.Y) - float64(beacon.Y))
 		dist := int(diffX + diffY)
 
-		for distY := 0; distY <= dist; distY++ {
+		// distance between the row and the sensor.Y
+		distY := int(math.Abs(float64(row - sensor.Y)))
 
-			y := sensor.Y + distY
-			p = sensor.addPositionsCannotContainBeacon(y, p, (dist - distY), row)
-
-			y = sensor.Y - distY
-			p = sensor.addPositionsCannotContainBeacon(y, p, (dist - distY), row)
+		distX := dist - distY
+		if distX < 0 {
+			// We are not able to conclude that the row cannot contain beacon with this sensor/beacon
+			continue
 		}
+
+		interval := Range{
+			min: sensor.X - distX,
+			max: sensor.X + distX,
+		}
+
+		list = append(list, interval)
 
 	}
 
-	//remove duplicates from p
-	p = removeDuplicateInt(p)
+	sort.Sort(list)
 
-	for _, beacon := range z.Beacons {
-		if beacon.Y == row {
-			// beacon is in the same row
-			p = removeElementInt(p, beacon.X)
+	count := len(list)
+	cleanList := []Range{}
+	interval := list[0]
+
+	for i := 1; i < count; i++ {
+		if list[i].min <= interval.max {
+			interval.max = getBigger(interval.max, list[i].max)
+			interval.min = getSmaller(interval.min, list[i].min)
+			continue
 		}
+		cleanList = append(cleanList, interval)
+		interval = list[i]
 	}
+	cleanList = append(cleanList, interval)
 
-	return p
+	return cleanList
 }
 
-func (s Sensor) addPositionsCannotContainBeacon(y int, p []int, dist int, row int) []int {
-	if y == row {
-		p = append(p, s.X)
-
-		xRight := s.X + dist
-
-		for i := s.X; i <= xRight; i++ {
-			p = append(p, i)
-		}
-
-		xLeft := s.X - dist
-
-		for i := xLeft; i <= s.X; i++ {
-			p = append(p, i)
-		}
+func getBigger(a int, b int) int {
+	if a > b {
+		return a
 	}
-	return p
+	return b
 }
 
-func removeDuplicateInt(intSlice []int) []int {
-	allKeys := make(map[int]bool)
-	list := []int{}
-	for _, item := range intSlice {
-		if _, value := allKeys[item]; !value {
-			allKeys[item] = true
-			list = append(list, item)
-		}
+func getSmaller(a int, b int) int {
+	if a < b {
+		return a
 	}
-	return list
-}
-
-func removeElementInt(intSlice []int, el int) []int {
-
-	for i, item := range intSlice {
-
-		if item == el {
-			return append(intSlice[:i], intSlice[i+1:]...)
-		}
-	}
-
-	return intSlice
-}
-
-func findValuesNotPresentBetween(intSlice []int, min int, max int) []int {
-	result := []int{}
-
-	for i := min; i < max; i++ {
-
-		if !contains(intSlice, i) {
-			result = append(result, i)
-		}
-	}
-
-	return result
-}
-
-func contains(intSlice []int, el int) bool {
-	for _, v := range intSlice {
-		if v == el {
-			return true
-		}
-	}
-
-	return false
-}
-
-func removeOutOfBounds(intSlice []int, min int, max int) []int {
-	for i := 0; i < len(intSlice); i++ {
-
-		if intSlice[i] < min {
-			intSlice = append(intSlice[:i], intSlice[i+1:]...)
-			i--
-		} else if intSlice[i] > max {
-			intSlice = append(intSlice[:i], intSlice[i+1:]...)
-			i--
-		}
-	}
-
-	return intSlice
+	return b
 }
 
 func lineToSensorAndBeacon(line string) (Sensor, Beacon) {
